@@ -7,14 +7,15 @@ import (
 	"github.com/hablullah/go-juliandays"
 )
 
-type Options struct {
+type SunOptions struct {
 	Pressure               float64
 	SurfaceSlope           float64
 	SurfaceAzimuthRotation float64
 	DeltaT                 float64
 }
 
-type Data struct {
+type SunData struct {
+	DateTime                     time.Time
 	JulianDay                    float64
 	JulianCentury                float64
 	JulianEphemerisDay           float64
@@ -39,20 +40,21 @@ type Data struct {
 	TopocentricSunRightAscension float64
 	TopocentricSunDeclination    float64
 	TopocentricLocalHourAngle    float64
+	TopocentricElevationAngle    float64
 	TopocentricZenithAngle       float64
 	TopocentricAstroAzimuthAngle float64
 	TopocentricAzimuthAngle      float64
 	SurfaceIncidenceAngle        float64
 }
 
-func getData(dt time.Time, latitude, longitude, elevation, temperature float64, opts *Options) (Data, error) {
+func GetSunAtTime(dt time.Time, loc Location, opts *SunOptions) (SunData, error) {
 	// Set default value
 	opts = setDefaultOptions(opts)
 
 	// 1. Calculate the Julian and Julian ephemeris day century and millennium
 	JD, err := juliandays.FromTime(dt)
 	if err != nil {
-		return Data{}, err
+		return SunData{}, err
 	}
 
 	JC := getJulianCentury(JD)
@@ -92,25 +94,26 @@ func getData(dt time.Time, latitude, longitude, elevation, temperature float64, 
 	delta := getGeocentricSunDeclination(beta, epsilon, lambda)
 
 	// 11. Calculate the observer local hour angle (in degrees)
-	H := getObserverLocalHourAngle(longitude, nu, alpha)
+	H := getObserverLocalHourAngle(loc.Longitude, nu, alpha)
 
 	// 12. Calculate the topocentric sun right ascension α` and declination δ` (in degrees).
 	// While on it also return the parallax in sun right ascension Δα (in degrees).
-	deltaAlpha, alphaPrime, deltaPrime := getEquatorialSunCoordinates(latitude, elevation, R, alpha, delta, H)
+	deltaAlpha, alphaPrime, deltaPrime := getEquatorialSunCoordinates(loc.Latitude, loc.Elevation, R, alpha, delta, H)
 
 	// 13. Calculate the topocentric local hour angle (in degrees)
 	HPrime := getTopocentricLocalHourAngle(H, deltaAlpha)
 
 	// 14. Calculate the topocentric zenith angle (in degrees)
-	zenith := getTopocentricZenithAngle(latitude, opts.Pressure, temperature, deltaPrime, HPrime)
+	zenith, sunElevation := getTopocentricZenithAngle(loc.Latitude, loc.Temperature, opts.Pressure, deltaPrime, HPrime)
 
 	// 15. Calculate the topocentric azimuth angle (in degrees)
-	astroAzimuth, azimuth := getTopocentricAzimuthAngle(latitude, deltaPrime, HPrime)
+	astroAzimuth, azimuth := getTopocentricAzimuthAngle(loc.Latitude, deltaPrime, HPrime)
 
 	// 16. Calculate the incidence angle for a surface oriented in any direction (in degrees)
 	incidenceAngle := getSurfaceIncidenceAngle(opts.SurfaceSlope, opts.SurfaceAzimuthRotation, zenith, astroAzimuth)
 
-	return Data{
+	return SunData{
+		DateTime:                     dt,
 		JulianDay:                    JD,
 		JulianCentury:                JC,
 		JulianEphemerisDay:           JDE,
@@ -135,6 +138,7 @@ func getData(dt time.Time, latitude, longitude, elevation, temperature float64, 
 		TopocentricSunRightAscension: alphaPrime,
 		TopocentricSunDeclination:    deltaPrime,
 		TopocentricLocalHourAngle:    HPrime,
+		TopocentricElevationAngle:    sunElevation,
 		TopocentricZenithAngle:       zenith,
 		TopocentricAstroAzimuthAngle: astroAzimuth,
 		TopocentricAzimuthAngle:      azimuth,
@@ -142,9 +146,74 @@ func getData(dt time.Time, latitude, longitude, elevation, temperature float64, 
 	}, nil
 }
 
-func setDefaultOptions(opts *Options) *Options {
+func GetSunTransit(date time.Time, loc Location, opts *SunOptions) (SunData, error) {
+	// Get sun data for 12 UT
+	tz := date.Location()
+	dt := time.Date(date.Year(), date.Month(), date.Day(), 12, 0, 0, 0, time.UTC)
+
+	// Calculate twice, first as approximate
+	for i := 0; i < 2; i++ {
+		// Get sun data
+		data, err := GetSunAtTime(dt, loc, opts)
+		if err != nil {
+			return SunData{}, err
+		}
+
+		// Create approximate transit time
+		EoT := getEquationOfTime(data)
+		fd := 12 - loc.Longitude/15 - EoT/60
+		fdSeconds := int(math.Round(fd * 60 * 60))
+		dt = time.Date(dt.Year(), dt.Month(), dt.Day(), 0, 0, int(fdSeconds), 0, time.UTC)
+	}
+
+	// Calculate final sun data
+	finalData, err := GetSunAtTime(dt.In(tz), loc, opts)
+	if err != nil {
+		return SunData{}, err
+	}
+
+	return finalData, nil
+}
+
+func GetSunAtElevation(elevation float64, transitData SunData, beforeTransit bool, loc Location, opts *SunOptions) (SunData, error) {
+	// Get sun data for 0 UT
+	tz := transitData.DateTime.Location()
+	dt := transitData.DateTime
+	dt = time.Date(dt.Year(), dt.Month(), dt.Day(), 0, 0, 0, 0, time.UTC)
+
+	data, err := GetSunAtTime(dt, loc, opts)
+	if err != nil {
+		return SunData{}, err
+	}
+
+	for i := 0; i < 2; i++ {
+		// Calculate hour angle
+		H := getLocalHourAngle(elevation, loc.Latitude, data.GeocentricSunDeclination)
+
+		// Calculate time in fraction of days
+		fd := H / 360
+
+		// Calculate duration to add (or substract) from transit time
+		duration := int(math.Round(fd * 24 * 60 * 60))
+		if beforeTransit {
+			duration *= -1
+		}
+
+		// Add to transit time
+		dt = transitData.DateTime.Add(time.Duration(duration) * time.Second)
+		data, err = GetSunAtTime(dt, loc, opts)
+		if err != nil {
+			return SunData{}, err
+		}
+	}
+
+	data.DateTime = data.DateTime.In(tz)
+	return data, nil
+}
+
+func setDefaultOptions(opts *SunOptions) *SunOptions {
 	if opts == nil {
-		opts = &Options{}
+		opts = &SunOptions{}
 	}
 
 	if opts.Pressure == 0 {
@@ -376,7 +445,7 @@ func getTopocentricLocalHourAngle(H, deltaAlpha float64) float64 {
 	return HPrime
 }
 
-func getTopocentricZenithAngle(latitude, pressure, temperature, deltaPrime, HPrime float64) float64 {
+func getTopocentricZenithAngle(latitude, temperature, pressure, deltaPrime, HPrime float64) (float64, float64) {
 	HPrimeRad := degToRad(HPrime)
 	deltaPrimeRad := degToRad(deltaPrime)
 
@@ -397,7 +466,7 @@ func getTopocentricZenithAngle(latitude, pressure, temperature, deltaPrime, HPri
 
 	// Calculate the topocentric zenith angle (in degrees)
 	zenith := 90 - e
-	return zenith
+	return zenith, e
 }
 
 func getTopocentricAzimuthAngle(latitude, deltaPrime, HPrime float64) (float64, float64) {
@@ -424,4 +493,32 @@ func getSurfaceIncidenceAngle(surfaceSlope, surfaceAzimuthRotation, zenith, astr
 		math.Sin(surfaceSlopeRad)*math.Sin(zenithRad)*math.Cos(degToRad(astroAzimuth-surfaceAzimuthRotation)))
 	incidenceAngle = radToDeg(incidenceAngle)
 	return incidenceAngle
+}
+
+func getEquationOfTime(data SunData) float64 {
+	JME := data.JulianEphemerisMillenium
+	deltaPsi := data.NutationLongitude
+	epsilon := degToRad(data.EclipticTrueObliquity)
+	alpha := data.GeocentricSunRightAscension
+
+	// Calculate sun's mean longitude (in degrees)
+	M := polynomial(JME, 280.4664567, 360007.6982779, 0.03032028, 1/49931, -1/15300, -1/2000000)
+
+	// Calculate equation of time (in degrees)
+	EoT := M - 0.0057183 - alpha + deltaPsi*math.Cos(epsilon)
+	EoT = limitValues(1440, 4*EoT)
+	return EoT
+}
+
+func getLocalHourAngle(elevation, latitude, sunDeclination float64) float64 {
+	deltaRad := degToRad(sunDeclination)
+	latitudeRad := degToRad(latitude)
+	elevationRad := degToRad(elevation)
+
+	H := math.Acos(
+		(math.Sin(elevationRad) - math.Sin(latitudeRad)*math.Sin(deltaRad)) /
+			(math.Cos(latitudeRad) * math.Cos(deltaRad)))
+	H = radToDeg(H)
+	H = limit180Degrees(H)
+	return H
 }
