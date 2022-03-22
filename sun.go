@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -147,27 +148,67 @@ func GetSunAtTime(dt time.Time, loc Location, opts *SunOptions) (SunData, error)
 }
 
 func GetSunTransit(date time.Time, loc Location, opts *SunOptions) (SunData, error) {
-	// Get sun data for 12 UT
+	// Change time to 0 UT
 	tz := date.Location()
-	dt := time.Date(date.Year(), date.Month(), date.Day(), 12, 0, 0, 0, time.UTC)
+	_, tzOffset := date.Zone()
+	dt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 
-	// Calculate twice, first as approximate
-	for i := 0; i < 2; i++ {
-		// Get sun data
-		data, err := GetSunAtTime(dt, loc, opts)
-		if err != nil {
-			return SunData{}, err
-		}
+	// Set TT to zero
+	ttZero := *opts
+	ttZero.DeltaT = 0
 
-		// Create approximate transit time
-		EoT := getEquationOfTime(data)
-		fd := 12 - loc.Longitude/15 - EoT/60
-		fdSeconds := int(math.Round(fd * 60 * 60))
-		dt = time.Date(dt.Year(), dt.Month(), dt.Day(), 0, 0, int(fdSeconds), 0, time.UTC)
+	// Get data for current, previous and next day
+	today, err := GetSunAtTime(dt, loc, &ttZero)
+	if err != nil {
+		return SunData{}, fmt.Errorf("today sun error: %v", err)
 	}
 
-	// Calculate final sun data
-	finalData, err := GetSunAtTime(dt.In(tz), loc, opts)
+	nextDt := dt.AddDate(0, 0, 1)
+	tomorrow, err := GetSunAtTime(nextDt, loc, &ttZero)
+	if err != nil {
+		return SunData{}, fmt.Errorf("tomorrow sun error: %v", err)
+	}
+
+	prevDt := dt.AddDate(0, 0, -1)
+	yesterday, err := GetSunAtTime(prevDt, loc, &ttZero)
+	if err != nil {
+		return SunData{}, fmt.Errorf("yesterday sun error: %v", err)
+	}
+
+	// Calculate the approximate sun transit time, m0, in fraction of day
+	// Limit it to value between 0 and 1
+	m0 := (today.GeocentricSunRightAscension - loc.Longitude - today.ApparentSiderealTime) / 360
+	m0 = limitZeroOne(m0)
+
+	// Calculate the sidereal time at Greenwich, in degrees, for the sun transit
+	nu := today.ApparentSiderealTime + 360.985647*m0
+
+	// Calculate the terms n
+	n := m0 + opts.DeltaT/86400
+
+	// Calculate α` and δ` (in degrees)
+	a := today.GeocentricSunRightAscension - yesterday.GeocentricSunRightAscension
+	b := tomorrow.GeocentricSunRightAscension - today.GeocentricSunRightAscension
+	c := b - a
+
+	a = limitAbsZeroOne(2, a)
+	b = limitAbsZeroOne(2, b)
+	alphaPrime := today.GeocentricSunRightAscension + (n*(a+b+c*n))/2
+
+	// Calculate the local hour angle for the sun transit
+	HPrime := nu + loc.Longitude - alphaPrime
+	HPrime = limit180Degrees(HPrime)
+
+	// Calculate sun transit time in fraction of day
+	T := m0 - (HPrime / 360)
+	T = limitZeroOne(T + float64(tzOffset)/(24*60*60))
+	TSeconds := int(T * 24 * 60 * 60)
+
+	// Create final transit time
+	transitTime := time.Date(dt.Year(), dt.Month(), dt.Day(), 0, 0, TSeconds, 0, tz)
+
+	// Get final data for transit
+	finalData, err := GetSunAtTime(transitTime, loc, opts)
 	if err != nil {
 		return SunData{}, err
 	}
@@ -175,40 +216,103 @@ func GetSunTransit(date time.Time, loc Location, opts *SunOptions) (SunData, err
 	return finalData, nil
 }
 
-func GetSunAtElevation(elevation float64, transitData SunData, beforeTransit bool, loc Location, opts *SunOptions) (SunData, error) {
-	// Get sun data for 0 UT
-	tz := transitData.DateTime.Location()
-	dt := transitData.DateTime
-	dt = time.Date(dt.Year(), dt.Month(), dt.Day(), 0, 0, 0, 0, time.UTC)
+func GetSunAtElevation(date time.Time, sunElevation float64, beforeTransit bool, loc Location, opts *SunOptions) (SunData, error) {
+	// Change time to 0 UT
+	tz := date.Location()
+	_, tzOffset := date.Zone()
+	dt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 
-	data, err := GetSunAtTime(dt, loc, opts)
+	// Set TT to zero
+	ttZero := *opts
+	ttZero.DeltaT = 0
+
+	// Get data for current, previous and next day
+	today, err := GetSunAtTime(dt, loc, &ttZero)
+	if err != nil {
+		return SunData{}, fmt.Errorf("today sun error: %v", err)
+	}
+
+	nextDt := dt.AddDate(0, 0, 1)
+	tomorrow, err := GetSunAtTime(nextDt, loc, &ttZero)
+	if err != nil {
+		return SunData{}, fmt.Errorf("tomorrow sun error: %v", err)
+	}
+
+	prevDt := dt.AddDate(0, 0, -1)
+	yesterday, err := GetSunAtTime(prevDt, loc, &ttZero)
+	if err != nil {
+		return SunData{}, fmt.Errorf("yesterday sun error: %v", err)
+	}
+
+	// Calculate the local hour angle
+	H := getLocalHourAngle(sunElevation, loc.Latitude, today.GeocentricSunDeclination)
+
+	// Calculate the approximate sun transit time, m0, in fraction of day
+	// Limit it to value between 0 and 1
+	m0 := (today.GeocentricSunRightAscension - loc.Longitude - today.ApparentSiderealTime) / 360
+	m0 = limitZeroOne(m0)
+
+	// Calculate the approximate time in fraction of day
+	m := m0
+	if beforeTransit {
+		m -= H / 360
+	} else {
+		m += H / 360
+	}
+	m = limitZeroOne(m)
+
+	// Calculate the sidereal time at Greenwich, in degrees
+	nu := today.ApparentSiderealTime + 360.985647*m
+
+	// Calculate the terms n
+	n := m + opts.DeltaT/86400
+
+	// Calculate α` and δ` (in degrees)
+	a := today.GeocentricSunRightAscension - yesterday.GeocentricSunRightAscension
+	b := tomorrow.GeocentricSunRightAscension - today.GeocentricSunRightAscension
+	c := b - a
+
+	aPrime := today.GeocentricSunDeclination - yesterday.GeocentricSunDeclination
+	bPrime := tomorrow.GeocentricSunDeclination - today.GeocentricSunDeclination
+	cPrime := bPrime - aPrime
+
+	a = limitAbsZeroOne(2, a)
+	b = limitAbsZeroOne(2, b)
+	aPrime = limitAbsZeroOne(2, aPrime)
+	bPrime = limitAbsZeroOne(2, bPrime)
+
+	alphaPrime := today.GeocentricSunRightAscension + (n*(a+b+c*n))/2
+	deltaPrime := today.GeocentricSunDeclination + (n*(aPrime+bPrime+cPrime*n))/2
+
+	// Calculate the local hour angle
+	HPrime := nu + loc.Longitude - alphaPrime
+	HPrime = limit180Degrees(HPrime)
+
+	// Calculate the sun altitude
+	HPrimeRad := degToRad(HPrime)
+	latitudeRad := degToRad(loc.Latitude)
+	deltaPrimeRad := degToRad(deltaPrime)
+
+	h := math.Asin(math.Sin(latitudeRad)*math.Sin(deltaPrimeRad) +
+		math.Cos(latitudeRad)*math.Cos(deltaPrimeRad)*math.Cos(HPrimeRad))
+	h = radToDeg(h)
+
+	// Calculate the time in fraction of day
+	T := m + ((h - sunElevation) /
+		(360 * math.Cos(deltaPrimeRad) * math.Cos(latitudeRad) * math.Sin(HPrimeRad)))
+	T = limitZeroOne(T + float64(tzOffset)/(24*60*60))
+	TSeconds := int(T * 24 * 60 * 60)
+
+	// Create final date time
+	finalDateTime := time.Date(dt.Year(), dt.Month(), dt.Day(), 0, 0, TSeconds, 0, tz)
+
+	// Get final sun data
+	finalData, err := GetSunAtTime(finalDateTime, loc, opts)
 	if err != nil {
 		return SunData{}, err
 	}
 
-	for i := 0; i < 2; i++ {
-		// Calculate hour angle
-		H := getLocalHourAngle(elevation, loc.Latitude, data.GeocentricSunDeclination)
-
-		// Calculate time in fraction of days
-		fd := H / 360
-
-		// Calculate duration to add (or substract) from transit time
-		duration := int(math.Round(fd * 24 * 60 * 60))
-		if beforeTransit {
-			duration *= -1
-		}
-
-		// Add to transit time
-		dt = transitData.DateTime.Add(time.Duration(duration) * time.Second)
-		data, err = GetSunAtTime(dt, loc, opts)
-		if err != nil {
-			return SunData{}, err
-		}
-	}
-
-	data.DateTime = data.DateTime.In(tz)
-	return data, nil
+	return finalData, nil
 }
 
 func setDefaultOptions(opts *SunOptions) *SunOptions {
