@@ -189,11 +189,8 @@ func GetSunTransit(date time.Time, loc Location, opts *SunOptions) (SunData, err
 	// Calculate α` and δ` (in degrees)
 	a := today.GeocentricSunRightAscension - yesterday.GeocentricSunRightAscension
 	b := tomorrow.GeocentricSunRightAscension - today.GeocentricSunRightAscension
-	c := b - a
-
-	a = limitAbsZeroOne(2, a)
-	b = limitAbsZeroOne(2, b)
-	alphaPrime := today.GeocentricSunRightAscension + (n*(a+b+c*n))/2
+	a, b = limitAbsZeroOne(2, a), limitAbsZeroOne(2, b)
+	alphaPrime := today.GeocentricSunRightAscension + (n*(a+b+(b-a)*n))/2
 
 	// Calculate the local hour angle for the sun transit
 	HPrime := nu + loc.Longitude - alphaPrime
@@ -270,16 +267,12 @@ func GetSunAtElevation(date time.Time, sunElevation float64, beforeTransit bool,
 	// Calculate α` and δ` (in degrees)
 	a := today.GeocentricSunRightAscension - yesterday.GeocentricSunRightAscension
 	b := tomorrow.GeocentricSunRightAscension - today.GeocentricSunRightAscension
-	c := b - a
-
 	aPrime := today.GeocentricSunDeclination - yesterday.GeocentricSunDeclination
 	bPrime := tomorrow.GeocentricSunDeclination - today.GeocentricSunDeclination
-	cPrime := bPrime - aPrime
 
-	a = limitAbsZeroOne(2, a)
-	b = limitAbsZeroOne(2, b)
-	aPrime = limitAbsZeroOne(2, aPrime)
-	bPrime = limitAbsZeroOne(2, bPrime)
+	a, aPrime = limitAbsZeroOne(2, a), limitAbsZeroOne(2, aPrime)
+	b, bPrime = limitAbsZeroOne(2, b), limitAbsZeroOne(2, bPrime)
+	c, cPrime := b-a, bPrime-aPrime
 
 	alphaPrime := today.GeocentricSunRightAscension + (n*(a+b+c*n))/2
 	deltaPrime := today.GeocentricSunDeclination + (n*(aPrime+bPrime+cPrime*n))/2
