@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 )
 
@@ -58,8 +57,4 @@ func polynomial(x float64, values ...float64) float64 {
 		sum += value * math.Pow(x, float64(i))
 	}
 	return sum
-}
-
-func printf(format string, a ...interface{}) {
-	fmt.Printf(format, a...)
 }
