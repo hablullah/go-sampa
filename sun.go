@@ -256,7 +256,6 @@ func GetSunAtElevation(date time.Time, sunElevation float64, beforeTransit bool,
 	} else {
 		m += H / 360
 	}
-	m = limitZeroOne(m)
 
 	// Calculate the sidereal time at Greenwich, in degrees
 	nu := today.ApparentSiderealTime + 360.985647*m
