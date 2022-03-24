@@ -243,6 +243,9 @@ func GetSunAtElevation(date time.Time, sunElevation float64, beforeTransit bool,
 
 	// Calculate the local hour angle
 	H := getLocalHourAngle(sunElevation, loc.Latitude, today.GeocentricSunDeclination)
+	if math.IsNaN(H) {
+		return SunData{}, nil
+	}
 
 	// Calculate the approximate sun transit time, m0, in fraction of day
 	// Limit it to value between 0 and 1
