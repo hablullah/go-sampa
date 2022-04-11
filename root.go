@@ -7,32 +7,38 @@ import (
 
 func main() {
 	location := Location{
-		Latitude:    34.1667,
-		Longitude:   -118.4667,
+		Latitude:    -6.21138888888889,
+		Longitude:   106.845277777778,
 		Elevation:   0,
-		Temperature: 10.0,
+		Temperature: 10,
 	}
 
-	opts := &SunOptions{
-		Pressure:               1010,
-		SurfaceSlope:           0,
-		SurfaceAzimuthRotation: -0,
-		DeltaT:                 69.8,
-	}
+	tz := time.FixedZone("WIB", 7*60*60)
+	dt := time.Date(2022, 1, 1, 0, 0, 0, 0, tz)
+	limit := dt.AddDate(1, 0, 0)
 
-	tz := time.FixedZone("LST", -8*60*60)
-	dt := time.Date(2010, 1, 1, 0, 0, 0, 0, tz)
-	limit := time.Date(2023, 1, 1, 0, 0, 0, 0, tz)
+	prayerEvents := []CustomSunEvent{
+		{
+			Name:          "twilight rise",
+			SunElevation:  func(_ SunData) float64 { return -18 },
+			BeforeTransit: true,
+		}, {
+			Name:          "twilight set",
+			SunElevation:  func(_ SunData) float64 { return -18 },
+			BeforeTransit: false,
+		},
+	}
 
 	for dt.Before(limit) {
-		sunrise, _ := GetSunAtElevation(dt, -0.8333, true, location, opts)
-		transit, _ := GetSunTransit(dt, location, opts)
-		sunset, _ := GetSunAtElevation(dt, -0.8333, false, location, opts)
-		fmt.Printf("%s\t%s\t%s\t%s\n",
+		e, _ := GetSunEvents(dt, location, nil, prayerEvents...)
+
+		fmt.Printf("%s\t%s\t%s\t%s\t%s\t%s\n",
 			dt.Format("2006-01-02"),
-			sunrise.DateTime.Format("15:04:05"),
-			transit.DateTime.Format("15:04:05"),
-			sunset.DateTime.Format("15:04:05"))
+			e.Others["twilight rise"].DateTime.Format("15:04:05"),
+			e.Sunrise.DateTime.Format("15:04:05"),
+			e.Transit.DateTime.Format("15:04:05"),
+			e.Sunset.DateTime.Format("15:04:05"),
+			e.Others["twilight rise"].DateTime.Format("15:04:05"))
 		dt = dt.AddDate(0, 0, 1)
 	}
 }
