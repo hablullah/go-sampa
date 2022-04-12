@@ -1,4 +1,4 @@
-package main
+package sampa
 
 type Location struct {
 	Latitude    float64

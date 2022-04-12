@@ -1,4 +1,4 @@
-package main
+package sampa
 
 type _NutationPeriodicTerm struct {
 	Y []float64

@@ -1,4 +1,4 @@
-package main
+package sampa
 
 type _EarthPeriodicTerm struct {
 	A float64

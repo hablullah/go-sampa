@@ -1,4 +1,4 @@
-module sampa
+module github.com/hablullah/go-sampa
 
 go 1.17
 
