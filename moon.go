@@ -16,6 +16,7 @@ type MoonData struct {
 	JulianEphemerisMillenium     float64
 	GeocentricLongitude          float64
 	GeocentricLatitude           float64
+	GeocentricDistance           float64
 	NutationLongitude            float64
 	NutationObliquity            float64
 	EclipticTrueObliquity        float64
@@ -109,6 +110,7 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 		JulianEphemerisMillenium:     JME,
 		GeocentricLongitude:          lambdaPrime,
 		GeocentricLatitude:           beta,
+		GeocentricDistance:           dDelta,
 		NutationLongitude:            deltaPsi,
 		NutationObliquity:            deltaEpsilon,
 		EclipticTrueObliquity:        epsilon,

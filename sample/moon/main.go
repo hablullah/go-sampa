@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/hablullah/go-sampa"
@@ -25,6 +27,6 @@ func main() {
 	}
 	data = data
 
-	// bt, _ := json.MarshalIndent(&data, "", "  ")
-	// fmt.Println(string(bt))
+	bt, _ := json.MarshalIndent(&data, "", "  ")
+	fmt.Println(string(bt))
 }
