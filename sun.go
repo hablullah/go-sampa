@@ -631,12 +631,3 @@ func getSunABC(today, yesterday, tomorrow SunData) sunABC {
 		c: c, cPrime: cPrime,
 	}
 }
-
-func dayFractionToTime(dt time.Time, f float64, tz *time.Location) time.Time {
-	if f < 0 {
-		return time.Time{}
-	}
-
-	fs := int(math.Round(f * 24 * 60 * 60))
-	return time.Date(dt.Year(), dt.Month(), dt.Day(), 0, 0, fs, 0, tz)
-}

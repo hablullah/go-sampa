@@ -14,6 +14,7 @@ type MoonData struct {
 	JulianEphemerisDay           float64
 	JulianEphemerisCentury       float64
 	JulianEphemerisMillenium     float64
+	MeanAnomaly                  float64
 	GeocentricLongitude          float64
 	GeocentricLatitude           float64
 	GeocentricDistance           float64
@@ -59,7 +60,8 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 
 	// 2. Calculate the Moon Geocentric Longitude, Latitude, and Distance Between
 	// the Centers of Earth and Moon
-	lambdaPrime, beta, dDelta := getMoonGeocentricPosition(JCE)
+	MPrime := getMoonMeanAnomaly(JCE)
+	lambdaPrime, beta, dDelta := getMoonGeocentricPosition(JCE, MPrime)
 
 	// 3. Calculate the Moon's Equatorial Horizontal Parallax (π in degrees)
 	pi := math.Asin(6378.14 / dDelta)
@@ -108,6 +110,7 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 		JulianEphemerisDay:           JDE,
 		JulianEphemerisCentury:       JCE,
 		JulianEphemerisMillenium:     JME,
+		MeanAnomaly:                  MPrime,
 		GeocentricLongitude:          lambdaPrime,
 		GeocentricLatitude:           beta,
 		GeocentricDistance:           dDelta,
@@ -131,7 +134,13 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 	}, nil
 }
 
-func getMoonGeocentricPosition(JCE float64) (float64, float64, float64) {
+func getMoonMeanAnomaly(JCE float64) float64 {
+	MPrime := polynomial(JCE, 134.9633964, 477198.8675055, 0.0087414, 1/69699, -1/14712000)
+	MPrime = limitDegrees(MPrime)
+	return MPrime
+}
+
+func getMoonGeocentricPosition(JCE, MPrime float64) (float64, float64, float64) {
 	// Calculate the Moon's Mean Longitude, L' (in degrees)
 	LPrime := polynomial(JCE, 218.3164477, 481267.88123421, -0.0015786, 1/538841, -1/65194000)
 	LPrime = limitDegrees(LPrime)
@@ -143,10 +152,6 @@ func getMoonGeocentricPosition(JCE float64) (float64, float64, float64) {
 	// Calculate the Sun's Mean Anomaly, M (in degrees)
 	M := polynomial(JCE, 357.5291092, 35999.0502909, -0.0001536, 1/24490000)
 	M = limitDegrees(M)
-
-	// Calculate the Moon's mean anomaly, M' (in degrees)
-	MPrime := polynomial(JCE, 134.9633964, 477198.8675055, 0.0087414, 1/69699, -1/14712000)
-	MPrime = limitDegrees(MPrime)
 
 	// Calculate the Moon's Argument of Latitude, F (in degrees)
 	F := polynomial(JCE, 93.2720950, 483202.0175233, -0.0036539, -1/3526000, 1/863310000)

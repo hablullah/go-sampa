@@ -2,6 +2,7 @@ package sampa
 
 import (
 	"math"
+	"time"
 )
 
 func radToDeg(rad float64) float64 {
@@ -57,4 +58,13 @@ func polynomial(x float64, values ...float64) float64 {
 		sum += value * math.Pow(x, float64(i))
 	}
 	return sum
+}
+
+func dayFractionToTime(dt time.Time, f float64, tz *time.Location) time.Time {
+	if f < 0 {
+		return time.Time{}
+	}
+
+	fs := int(math.Round(f * 24 * 60 * 60))
+	return time.Date(dt.Year(), dt.Month(), dt.Day(), 0, 0, fs, 0, tz)
 }
