@@ -158,3 +158,27 @@ func getTopocentricAzimuthAngle(latitude, deltaPrime, HPrime float64) (float64, 
 	azimuth = limitDegrees(azimuth)
 	return astroAzimuth, azimuth
 }
+
+func getLocalHourAngle(elevation, latitude, sunDeclination float64) float64 {
+	deltaRad := degToRad(sunDeclination)
+	latitudeRad := degToRad(latitude)
+	elevationRad := degToRad(elevation)
+
+	H := math.Acos(
+		(math.Sin(elevationRad) - math.Sin(latitudeRad)*math.Sin(deltaRad)) /
+			(math.Cos(latitudeRad) * math.Cos(deltaRad)))
+	H = radToDeg(H)
+	H = limit180Degrees(H)
+	return H
+}
+
+func interpolate(factor, d, dMin, dPlus float64) float64 {
+	n := factor
+	a := d - dMin
+	b := dPlus - d
+	c := b - a
+
+	// TODO: in SPA paper a & b values must be limited
+	// between 0 and 1, i.e. a = limitAbsZeroOne(2, a)
+	return d + n*(a+b+c*n)/2
+}

@@ -180,33 +180,30 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 	ttZero.DeltaT = 0
 
 	// Get data for current, previous and next day
-	today, err := GetSunPosition(dt, loc, &ttZero)
+	d, err := GetSunPosition(dt, loc, &ttZero)
 	if err != nil {
 		return SunEvents{}, fmt.Errorf("today sun error: %v", err)
 	}
 
-	nextDt := dt.AddDate(0, 0, 1)
-	tomorrow, err := GetSunPosition(nextDt, loc, &ttZero)
-	if err != nil {
-		return SunEvents{}, fmt.Errorf("tomorrow sun error: %v", err)
-	}
-
-	prevDt := dt.AddDate(0, 0, -1)
-	yesterday, err := GetSunPosition(prevDt, loc, &ttZero)
+	yesterday := dt.AddDate(0, 0, -1)
+	dMin, err := GetSunPosition(yesterday, loc, &ttZero)
 	if err != nil {
 		return SunEvents{}, fmt.Errorf("yesterday sun error: %v", err)
 	}
 
-	// Calculate ABC
-	abc := getSunABC(today, yesterday, tomorrow)
+	tomorrow := dt.AddDate(0, 0, 1)
+	dPlus, err := GetSunPosition(tomorrow, loc, &ttZero)
+	if err != nil {
+		return SunEvents{}, fmt.Errorf("tomorrow sun error: %v", err)
+	}
 
 	// Calculate the approximate sun transit time, st0, in fraction of day
 	// Limit it to value between 0 and 1
-	st0 := (today.GeocentricRightAscension - loc.Longitude - today.ApparentSiderealTime) / 360
+	st0 := (d.GeocentricRightAscension + loc.Longitude - d.ApparentSiderealTime) / 360
 	st0 = limitZeroOne(st0)
 
 	// Calculate transit time in fraction of day
-	st := getSunTransit(loc, opts, today, abc, st0, tzOffset)
+	st := getSunTransit(loc, opts, d, dMin, dPlus, st0, tzOffset)
 	stData, err := GetSunPosition(dayFractionToTime(dt, st, tz), loc, opts)
 	if err != nil {
 		return SunEvents{}, fmt.Errorf("sun transit error: %v", err)
@@ -216,13 +213,13 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 	elevationAdjustment := 2.076 * math.Sqrt(loc.Elevation)
 	riseSetElevation := -(50 + elevationAdjustment) / 60.0
 
-	sr := getSunAtElevation(loc, opts, today, abc, riseSetElevation, st0, true, tzOffset)
+	sr := getSunAtElevation(loc, opts, d, dMin, dPlus, riseSetElevation, st0, true, tzOffset)
 	srData, err := GetSunPosition(dayFractionToTime(dt, sr, tz), loc, opts)
 	if err != nil {
 		return SunEvents{}, fmt.Errorf("sunrise error: %v", err)
 	}
 
-	ss := getSunAtElevation(loc, opts, today, abc, riseSetElevation, st0, false, tzOffset)
+	ss := getSunAtElevation(loc, opts, d, dMin, dPlus, riseSetElevation, st0, false, tzOffset)
 	ssData, err := GetSunPosition(dayFractionToTime(dt, ss, tz), loc, opts)
 	if err != nil {
 		return SunEvents{}, fmt.Errorf("sunset error: %v", err)
@@ -231,7 +228,7 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 	// Calculate other events
 	otherEvents := map[string]SunData{}
 	for _, e := range customEvents {
-		et := getSunAtElevation(loc, opts, today, abc, e.SunElevation(today), st0, e.BeforeTransit, tzOffset)
+		et := getSunAtElevation(loc, opts, d, dMin, dPlus, e.SunElevation(d), st0, e.BeforeTransit, tzOffset)
 		eData, err := GetSunPosition(dayFractionToTime(dt, et, tz), loc, opts)
 		if err != nil {
 			return SunEvents{}, fmt.Errorf("event \"%s\" error: %v", e.Name, err)
@@ -247,37 +244,38 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 	}, nil
 }
 
-func getSunTransit(loc Location, opts *Options, today SunData, abc sunABC, st0 float64, tzOffset int) float64 {
+func getSunTransit(loc Location, opts *Options, today, yesterday, tomorrow SunData, st0 float64, tzOffset int) float64 {
 	// Calculate the sidereal time at Greenwich, in degrees, for the sun transit
 	nu := today.ApparentSiderealTime + 360.985647*st0
 
-	// Calculate the terms n
+	// Interpolate right ascension α` (in degrees)
 	n := st0 + opts.DeltaT/86400
-
-	// Calculate α` (in degrees)
-	alphaPrime := today.GeocentricRightAscension + (n*(abc.a+abc.b+abc.c*n))/2
+	alphaPrime := interpolate(n,
+		today.GeocentricRightAscension,
+		yesterday.GeocentricRightAscension,
+		tomorrow.GeocentricRightAscension)
 
 	// Calculate the local hour angle for the sun transit
-	HPrime := nu + loc.Longitude - alphaPrime
+	// TODO: in SPA paper HPrime := nu + loc.Longitude - alphaPrime
+	HPrime := nu - loc.Longitude - alphaPrime
 	HPrime = limit180Degrees(HPrime)
 
 	// Calculate sun transit time in fraction of day
 	T := st0 - (HPrime / 360)
 	T = limitZeroOne(T + float64(tzOffset)/(24*60*60))
-
 	return T
 }
 
-func getSunAtElevation(loc Location, opts *Options, today SunData, abc sunABC,
-	sunElevation float64, approxSunTransit float64, beforeTransit bool, tzOffset int) float64 {
-	// Calculate the local hour angle
+func getSunAtElevation(loc Location, opts *Options, today, yesterday, tomorrow SunData,
+	sunElevation float64, approxTransit float64, beforeTransit bool, tzOffset int) float64 {
+	// Calculate the approximate local hour angle
 	H := getLocalHourAngle(sunElevation, loc.Latitude, today.GeocentricDeclination)
 	if math.IsNaN(H) {
 		return -999
 	}
 
 	// Calculate the approximate time in fraction of day
-	m := approxSunTransit
+	m := approxTransit
 	if beforeTransit {
 		m -= H / 360
 	} else {
@@ -287,15 +285,20 @@ func getSunAtElevation(loc Location, opts *Options, today SunData, abc sunABC,
 	// Calculate the sidereal time at Greenwich, in degrees
 	nu := today.ApparentSiderealTime + 360.985647*m
 
-	// Calculate the terms n
+	// Interpolate right ascension and declination (α` δ` in degrees)
 	n := m + opts.DeltaT/86400
-
-	// Calculate α` and δ` (in degrees)
-	alphaPrime := today.GeocentricRightAscension + (n*(abc.a+abc.b+abc.c*n))/2
-	deltaPrime := today.GeocentricDeclination + (n*(abc.aPrime+abc.bPrime+abc.cPrime*n))/2
+	alphaPrime := interpolate(n,
+		today.GeocentricRightAscension,
+		yesterday.GeocentricRightAscension,
+		tomorrow.GeocentricRightAscension)
+	deltaPrime := interpolate(n,
+		today.GeocentricDeclination,
+		yesterday.GeocentricDeclination,
+		tomorrow.GeocentricDeclination)
 
 	// Calculate the local hour angle
-	HPrime := nu + loc.Longitude - alphaPrime
+	// TODO: in SPA paper HPrime := nu + loc.Longitude - alphaPrime
+	HPrime := nu - loc.Longitude - alphaPrime
 	HPrime = limit180Degrees(HPrime)
 
 	// Calculate the sun altitude
@@ -311,7 +314,6 @@ func getSunAtElevation(loc Location, opts *Options, today SunData, abc sunABC,
 	T := m + ((h - sunElevation) /
 		(360 * math.Cos(deltaPrimeRad) * math.Cos(latitudeRad) * math.Sin(HPrimeRad)))
 	T = limitZeroOne(T + float64(tzOffset)/(24*60*60))
-
 	return T
 }
 
@@ -429,49 +431,4 @@ func getSurfaceIncidenceAngle(surfaceSlope, surfaceAzimuthRotation, zenith, astr
 		math.Sin(surfaceSlopeRad)*math.Sin(zenithRad)*math.Cos(degToRad(astroAzimuth-surfaceAzimuthRotation)))
 	incidenceAngle = radToDeg(incidenceAngle)
 	return incidenceAngle
-}
-
-func getEquationOfTime(data SunData) float64 {
-	JME := data.JulianEphemerisMillenium
-	deltaPsi := data.NutationLongitude
-	epsilon := degToRad(data.EclipticTrueObliquity)
-	alpha := data.GeocentricRightAscension
-
-	// Calculate sun's mean longitude (in degrees)
-	M := polynomial(JME, 280.4664567, 360007.6982779, 0.03032028, 1/49931, -1/15300, -1/2000000)
-
-	// Calculate equation of time (in degrees)
-	EoT := M - 0.0057183 - alpha + deltaPsi*math.Cos(epsilon)
-	EoT = limitValues(1440, 4*EoT)
-	return EoT
-}
-
-func getLocalHourAngle(elevation, latitude, sunDeclination float64) float64 {
-	deltaRad := degToRad(sunDeclination)
-	latitudeRad := degToRad(latitude)
-	elevationRad := degToRad(elevation)
-
-	H := math.Acos(
-		(math.Sin(elevationRad) - math.Sin(latitudeRad)*math.Sin(deltaRad)) /
-			(math.Cos(latitudeRad) * math.Cos(deltaRad)))
-	H = radToDeg(H)
-	H = limit180Degrees(H)
-	return H
-}
-
-func getSunABC(today, yesterday, tomorrow SunData) sunABC {
-	a := today.GeocentricRightAscension - yesterday.GeocentricRightAscension
-	b := tomorrow.GeocentricRightAscension - today.GeocentricRightAscension
-	aPrime := today.GeocentricDeclination - yesterday.GeocentricDeclination
-	bPrime := tomorrow.GeocentricDeclination - today.GeocentricDeclination
-
-	a, aPrime = limitAbsZeroOne(2, a), limitAbsZeroOne(2, aPrime)
-	b, bPrime = limitAbsZeroOne(2, b), limitAbsZeroOne(2, bPrime)
-	c, cPrime := b-a, bPrime-aPrime
-
-	return sunABC{
-		a: a, aPrime: aPrime,
-		b: b, bPrime: bPrime,
-		c: c, cPrime: cPrime,
-	}
 }
