@@ -315,22 +315,6 @@ func getSunAtElevation(loc Location, opts *Options, today SunData, abc sunABC,
 	return T
 }
 
-func getJulianEphemerisDays(JD, deltaT float64) float64 {
-	return JD + deltaT/86_400
-}
-
-func getJulianCentury(JD float64) float64 {
-	return (JD - 2_451_545) / 36_525
-}
-
-func getJulianEphemerisCentury(JDE float64) float64 {
-	return (JDE - 2_451_545) / 36_525
-}
-
-func getJulianEphemerisMillenium(JCE float64) float64 {
-	return JCE / 10
-}
-
 func getEarthHeliocentricLongitude(JME float64) float64 {
 	L0 := getEarthPeriodicTermSum("L0", JME)
 	L1 := getEarthPeriodicTermSum("L1", JME)
