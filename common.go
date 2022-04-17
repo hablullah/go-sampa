@@ -1,6 +1,8 @@
 package sampa
 
-import "math"
+import (
+	"math"
+)
 
 func getJulianEphemerisDays(JD, deltaT float64) float64 {
 	return JD + deltaT/86_400
@@ -180,5 +182,6 @@ func interpolate(factor, d, dMin, dPlus float64) float64 {
 
 	// TODO: in SPA paper a & b values must be limited
 	// between 0 and 1, i.e. a = limitAbsZeroOne(2, a)
-	return d + n*(a+b+c*n)/2
+	d1 := d + n*(a+b+c*n)/2
+	return limitDegrees(d1)
 }
