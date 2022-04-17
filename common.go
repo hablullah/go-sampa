@@ -24,21 +24,21 @@ func getNutationLongitudeAndObliquity(JCE float64) (float64, float64) {
 	X := make([]float64, 5)
 
 	// Calculate the mean elongation of the moon from the sun, X0 (in degrees)
-	X[0] = polynomial(JCE, 297.85036, 445267.11148, -0.0019142, 1/189474)
+	X[0] = polynomial(JCE, 297.85036, 445267.11148, -0.0019142, 1/189474.0)
 
 	// Calculate the mean anomaly of the sun (Earth), X1 (in degrees)
-	X[1] = polynomial(JCE, 357.52772, 35999.050340, -0.0001603, -1/300000)
+	X[1] = polynomial(JCE, 357.52772, 35999.050340, -0.0001603, -1/300000.0)
 
 	// Calculate the mean anomaly of the moon, X2 (in degrees)
-	X[2] = polynomial(JCE, 134.96298, 477198.867398, 0.0086972, 1/56250)
+	X[2] = polynomial(JCE, 134.96298, 477198.867398, 0.0086972, 1/56250.0)
 
 	// Calculate the moon's argument of latitude, X3 (in degrees)
-	X[3] = polynomial(JCE, 93.27191, 483202.017538, -0.0036825, 1/327270)
+	X[3] = polynomial(JCE, 93.27191, 483202.017538, -0.0036825, 1/327270.0)
 
 	// Calculate the longitude of the ascending node of the moon's
 	// mean orbit on the ecliptic, measured from the mean equinox of the
 	// date, X4 (in degrees)
-	X[4] = polynomial(JCE, 125.04452, -1934.136261, 0.0020708, 1/450000)
+	X[4] = polynomial(JCE, 125.04452, -1934.136261, 0.0020708, 1.0/450000)
 
 	// Calculate nutation periodic sum
 	var sumDeltaPsi float64
@@ -178,10 +178,12 @@ func interpolate(factor, d, dMin, dPlus float64) float64 {
 	n := factor
 	a := d - dMin
 	b := dPlus - d
-	c := b - a
 
 	// TODO: in SPA paper a & b values must be limited
 	// between 0 and 1, i.e. a = limitAbsZeroOne(2, a)
+	a = limitFullCircle(a)
+	b = limitFullCircle(b)
+	c := b - a
 	d1 := d + n*(a+b+c*n)/2
 	return limitDegrees(d1)
 }

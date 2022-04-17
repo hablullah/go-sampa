@@ -54,12 +54,6 @@ type SunEvents struct {
 	Others  map[string]SunData
 }
 
-type sunABC struct {
-	a, aPrime float64
-	b, bPrime float64
-	c, cPrime float64
-}
-
 func GetSunPosition(dt time.Time, loc Location, opts *Options) (SunData, error) {
 	// Make sure date time is not zero
 	if dt.IsZero() {
@@ -216,7 +210,6 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 	// Limit it to value between 0 and 1
 	st0 := (today.GeocentricRightAscension - loc.Longitude - today.ApparentSiderealTime) / 360
 	st0 = limitZeroOne(st0)
-	fmt.Printf("APPROX TRANSIT: %f\n", st0)
 
 	// Calculate transit time in fraction of day
 	st := getCelestialTransit(args, st0)

@@ -34,9 +34,9 @@ func limitZeroOne(val float64) float64 {
 	return val
 }
 
-func limitAbsZeroOne(abs, val float64) float64 {
-	if math.Abs(val) >= abs {
-		return limitZeroOne(val)
+func limitFullCircle(val float64) float64 {
+	if int(math.Round(math.Abs(val)/360)) == 1 {
+		val = limitDegrees(val)
 	}
 	return val
 }

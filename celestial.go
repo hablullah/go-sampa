@@ -1,7 +1,6 @@
 package sampa
 
 import (
-	"fmt"
 	"math"
 	"time"
 )
@@ -44,7 +43,6 @@ func toCelestial(data interface{}) celestialData {
 func getCelestialTransit(args celestialArgs, approx float64) time.Time {
 	// Calculate the sidereal time at Greenwich, in degrees, for the transit
 	nu := args.today.ApparentSiderealTime + 360.985647*approx
-	fmt.Printf("SIDEREAL TIME: %f\n", nu)
 
 	// Interpolate right ascension α` (in degrees)
 	n := approx + args.deltaT/86400
@@ -52,12 +50,6 @@ func getCelestialTransit(args celestialArgs, approx float64) time.Time {
 		args.today.GeocentricRightAscension,
 		args.yesterday.GeocentricRightAscension,
 		args.tomorrow.GeocentricRightAscension)
-	fmt.Printf("TODAY RIGHT ASC: %f\n", args.today.GeocentricRightAscension)
-	fmt.Printf("YESTERDAY RIGHT ASC: %f\n", args.yesterday.GeocentricRightAscension)
-	fmt.Printf("TOMORROW RIGHT ASC: %f\n", args.tomorrow.GeocentricRightAscension)
-
-	fmt.Printf("INTERPOLATION FACTOR: %f\n", n)
-	fmt.Printf("INTERPOLATED RIGHT ASC: %f\n", alphaPrime)
 
 	// Calculate the local hour angle for the sun transit
 	// TODO: in Meeus HPrime = nu - loc.Longitude - alphaPrime
