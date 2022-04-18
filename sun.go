@@ -211,7 +211,7 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 	st0 := (today.GeocentricRightAscension - loc.Longitude - today.ApparentSiderealTime) / 360
 	st0 = limitZeroOne(st0)
 
-	// Calculate transit time in fraction of day
+	// Calculate transit time
 	st := getCelestialTransit(args, st0)
 	stData, err := GetSunPosition(st, loc, opts)
 	if err != nil {

@@ -1,6 +1,7 @@
 package sampa
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -18,6 +19,7 @@ type MoonData struct {
 	GeocentricLongitude          float64
 	GeocentricLatitude           float64
 	GeocentricDistance           float64
+	HorizontalParallax           float64
 	NutationLongitude            float64
 	NutationObliquity            float64
 	EclipticTrueObliquity        float64
@@ -35,6 +37,18 @@ type MoonData struct {
 	TopocentricZenithAngle       float64
 	TopocentricAstroAzimuthAngle float64
 	TopocentricAzimuthAngle      float64
+}
+
+type CustomMoonEvent struct {
+	Name          string
+	BeforeTransit bool
+	MoonElevation func(todayData MoonData) float64
+}
+
+type MoonEvents struct {
+	Transit  MoonData
+	Moonrise MoonData
+	Moonset  MoonData
 }
 
 func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error) {
@@ -114,6 +128,7 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 		GeocentricLongitude:          lambdaPrime,
 		GeocentricLatitude:           beta,
 		GeocentricDistance:           dDelta,
+		HorizontalParallax:           pi,
 		NutationLongitude:            deltaPsi,
 		NutationObliquity:            deltaEpsilon,
 		EclipticTrueObliquity:        epsilon,
@@ -134,27 +149,107 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 	}, nil
 }
 
+func GetMoonEvents(date time.Time, loc Location, opts *Options, customEvents ...CustomMoonEvent) (MoonEvents, error) {
+	// Set default value
+	loc = setDefaultLocation(loc)
+	opts = setDefaultOptions(opts)
+
+	// Change time to 0 UT
+	tz := date.Location()
+	_, tzOffset := date.Zone()
+	dt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+
+	// Set TT to zero
+	ttZero := *opts
+	ttZero.DeltaT = 0
+
+	// Get data for current, previous and next day
+	today, err := GetMoonPosition(dt, loc, &ttZero)
+	if err != nil {
+		return MoonEvents{}, fmt.Errorf("today moon error: %v", err)
+	}
+
+	prevDate := dt.AddDate(0, 0, -1)
+	yesterday, err := GetMoonPosition(prevDate, loc, &ttZero)
+	if err != nil {
+		return MoonEvents{}, fmt.Errorf("yesterday moon error: %v", err)
+	}
+
+	nextDate := dt.AddDate(0, 0, 1)
+	tomorrow, err := GetMoonPosition(nextDate, loc, &ttZero)
+	if err != nil {
+		return MoonEvents{}, fmt.Errorf("tomorrow moon error: %v", err)
+	}
+
+	// Prepare calculation args
+	elevationAdjustment := 2.076 * math.Sqrt(loc.Elevation)
+	h0 := 0.7275*today.HorizontalParallax - (34+elevationAdjustment)/60
+
+	args := celestialArgs{
+		date:      dt,
+		location:  loc,
+		deltaT:    opts.DeltaT,
+		today:     toCelestial(today),
+		yesterday: toCelestial(yesterday),
+		tomorrow:  toCelestial(tomorrow),
+		tz:        tz,
+		tzOffset:  tzOffset,
+	}
+
+	// Calculate the approximate moon transit time, st0, in fraction of day
+	// Limit it to value between 0 and 1
+	st0 := (today.GeocentricRightAscension - loc.Longitude - today.ApparentSiderealTime) / 360
+	st0 = limitZeroOne(st0)
+
+	// Calculate transit time
+	mt := getCelestialTransit(args, st0)
+	mtData, err := GetMoonPosition(mt, loc, opts)
+	if err != nil {
+		return MoonEvents{}, fmt.Errorf("moon transit error: %v", err)
+	}
+
+	// Calculate moonrise
+	mr := getCelestialAtElevation(args, st0, h0, true)
+	mrData, err := GetMoonPosition(mr, loc, opts)
+	if err != nil {
+		return MoonEvents{}, fmt.Errorf("moonrise error: %v", err)
+	}
+
+	// Calculate moonset
+	ms := getCelestialAtElevation(args, st0, h0, false)
+	msData, err := GetMoonPosition(ms, loc, opts)
+	if err != nil {
+		return MoonEvents{}, fmt.Errorf("moonset error: %v", err)
+	}
+
+	return MoonEvents{
+		Transit:  mtData,
+		Moonrise: mrData,
+		Moonset:  msData,
+	}, nil
+}
+
 func getMoonMeanAnomaly(JCE float64) float64 {
-	MPrime := polynomial(JCE, 134.9633964, 477198.8675055, 0.0087414, 1/69699, -1/14712000)
+	MPrime := polynomial(JCE, 134.9633964, 477198.8675055, 0.0087414, 1/69699.0, -1/14712000.0)
 	MPrime = limitDegrees(MPrime)
 	return MPrime
 }
 
 func getMoonGeocentricPosition(JCE, MPrime float64) (float64, float64, float64) {
 	// Calculate the Moon's Mean Longitude, L' (in degrees)
-	LPrime := polynomial(JCE, 218.3164477, 481267.88123421, -0.0015786, 1/538841, -1/65194000)
+	LPrime := polynomial(JCE, 218.3164477, 481267.88123421, -0.0015786, 1/538841.0, -1/65194000.0)
 	LPrime = limitDegrees(LPrime)
 
 	// Calculate the Mean Elongation of the Moon, D (in degrees)
-	D := polynomial(JCE, 297.8501921, 445267.1114034, -0.0018819, 1/545868, -1/113065000)
+	D := polynomial(JCE, 297.8501921, 445267.1114034, -0.0018819, 1/545868.0, -1/113065000.0)
 	D = limitDegrees(D)
 
 	// Calculate the Sun's Mean Anomaly, M (in degrees)
-	M := polynomial(JCE, 357.5291092, 35999.0502909, -0.0001536, 1/24490000)
+	M := polynomial(JCE, 357.5291092, 35999.0502909, -0.0001536, 1/24490000.0)
 	M = limitDegrees(M)
 
 	// Calculate the Moon's Argument of Latitude, F (in degrees)
-	F := polynomial(JCE, 93.2720950, 483202.0175233, -0.0036539, -1/3526000, 1/863310000)
+	F := polynomial(JCE, 93.2720950, 483202.0175233, -0.0036539, -1/3526000.0, 1/863310000.0)
 	F = limitDegrees(F)
 
 	// Calculate term l (in 0.000001 degrees), r (in 0.001 kilometers), and
