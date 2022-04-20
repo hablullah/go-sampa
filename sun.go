@@ -164,10 +164,8 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 	loc = setDefaultLocation(loc)
 	opts = setDefaultOptions(opts)
 
-	// Change time to 0 UT
-	tz := date.Location()
-	_, tzOffset := date.Zone()
-	dt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, tz)
+	// Change time to 0 LCT
+	dt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 
 	// Set TT to zero
 	ttZero := *opts
@@ -202,8 +200,6 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 		today:     toCelestial(today),
 		yesterday: toCelestial(yesterday),
 		tomorrow:  toCelestial(tomorrow),
-		tz:        tz,
-		tzOffset:  tzOffset,
 	}
 
 	// Calculate the approximate sun transit time, st0, in fraction of day
