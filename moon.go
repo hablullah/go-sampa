@@ -1,11 +1,11 @@
 package sampa
 
 import (
-	"fmt"
 	"math"
 	"time"
 
 	"github.com/hablullah/go-juliandays"
+	fmt "github.com/hablullah/go-sampa/internal/fakefmt"
 )
 
 type MoonData struct {
@@ -71,35 +71,47 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 	JDE := getJulianEphemerisDays(JD, opts.DeltaT)
 	JCE := getJulianEphemerisCentury(JDE)
 	JME := getJulianEphemerisMillenium(JCE)
+	fmt.Printf("JD: %f\n", JD)
+	fmt.Printf("JC: %f\n", JC)
 
 	// 2. Calculate the Moon Geocentric Longitude, Latitude, and Distance Between
 	// the Centers of Earth and Moon
 	MPrime := getMoonMeanAnomaly(JCE)
+	fmt.Printf("M Prime: %f (%f rad)\n", MPrime, degToRad(MPrime))
 	lambdaPrime, beta, dDelta := getMoonGeocentricPosition(JCE, MPrime)
 
 	// 3. Calculate the Moon's Equatorial Horizontal Parallax (π in degrees)
 	pi := math.Asin(6378.14 / dDelta)
 	pi = radToDeg(pi)
+	fmt.Printf("PI: %f\n", pi)
 
 	// 4. Calculate the Nutation in Longitude and Obliquity (Δψ and Δε in degrees)
 	deltaPsi, deltaEpsilon := getNutationLongitudeAndObliquity(JCE)
+	fmt.Printf("DELTA PSI: %f\n", deltaPsi)
+	fmt.Printf("DELTA EPSILON: %f\n", deltaEpsilon)
 
 	// 5. Calculate the True Obliquity of the Ecliptic, ε (in degrees)
 	epsilon := getEclipticTrueObliquity(JME, deltaEpsilon)
+	fmt.Printf("EPSILON: %f (%f rad)\n", epsilon, degToRad(epsilon))
 
 	// 6. Calculate the Apparent Moon Longitude, λ (in degrees)
 	lambda := getApparentMoonLongitude(lambdaPrime, deltaPsi)
+	fmt.Printf("LAMBDA: %f (%f rad)\n", lambda, degToRad(lambda))
 
 	// 7. Calculate the Apparent Sidereal Time at Greenwich at any given time, ν (in degrees)
 	nu0 := getMeanSiderealTime(JD, JC)
 	nu := getApparentSiderealTime(deltaPsi, epsilon, nu0)
 	nu = limitDegrees(nu)
+	fmt.Printf("NU0: %f\n", nu0)
+	fmt.Printf("NU: %f\n", nu)
 
 	// 8. Calculate the Moon's Geocentric Right Ascension, α (in degrees)
 	alpha := getGeocentricRightAscension(beta, epsilon, lambda)
+	fmt.Printf("ALPHA: %f (%f rad)\n", alpha, degToRad(alpha))
 
 	// 9. Calculate the Moon's Geocentric Declination, δ (in degrees)
 	delta := getGeocentricDeclination(beta, epsilon, lambda)
+	fmt.Printf("DELTA: %f (%f rad)\n", delta, degToRad(delta))
 
 	// 10. Calculate the Observer Local Hour Angle, H (in degrees)
 	H := getObserverLocalHourAngle(loc.Longitude, nu, alpha)
@@ -154,21 +166,17 @@ func GetMoonEvents(date time.Time, loc Location, opts *Options, customEvents ...
 	loc = setDefaultLocation(loc)
 	opts = setDefaultOptions(opts)
 
-	// Change time to 0 UT
+	// Change time to 0 LCT
 	tz := date.Location()
 	_, tzOffset := date.Zone()
-	dt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	dt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, tz)
+	// dt = date
 
 	// Set TT to zero
 	ttZero := *opts
 	ttZero.DeltaT = 0
 
 	// Get data for current, previous and next day
-	today, err := GetMoonPosition(dt, loc, &ttZero)
-	if err != nil {
-		return MoonEvents{}, fmt.Errorf("today moon error: %v", err)
-	}
-
 	prevDate := dt.AddDate(0, 0, -1)
 	yesterday, err := GetMoonPosition(prevDate, loc, &ttZero)
 	if err != nil {
@@ -181,9 +189,16 @@ func GetMoonEvents(date time.Time, loc Location, opts *Options, customEvents ...
 		return MoonEvents{}, fmt.Errorf("tomorrow moon error: %v", err)
 	}
 
+	fmt.Printf("\nSTART HERE ========\n\n")
+	today, err := GetMoonPosition(dt, loc, &ttZero)
+	if err != nil {
+		return MoonEvents{}, fmt.Errorf("today moon error: %v", err)
+	}
+
 	// Prepare calculation args
 	elevationAdjustment := 2.076 * math.Sqrt(loc.Elevation)
 	h0 := 0.7275*today.HorizontalParallax - (34+elevationAdjustment)/60
+	fmt.Printf("h0: %f (%f rad)\n", h0, degToRad(h0))
 
 	args := celestialArgs{
 		date:      dt,
@@ -200,6 +215,7 @@ func GetMoonEvents(date time.Time, loc Location, opts *Options, customEvents ...
 	// Limit it to value between 0 and 1
 	st0 := (today.GeocentricRightAscension - loc.Longitude - today.ApparentSiderealTime) / 360
 	st0 = limitZeroOne(st0)
+	fmt.Printf("ST0: %f\n", st0)
 
 	// Calculate transit time
 	mt := getCelestialTransit(args, st0)
@@ -239,33 +255,42 @@ func getMoonGeocentricPosition(JCE, MPrime float64) (float64, float64, float64) 
 	// Calculate the Moon's Mean Longitude, L' (in degrees)
 	LPrime := polynomial(JCE, 218.3164477, 481267.88123421, -0.0015786, 1/538841.0, -1/65194000.0)
 	LPrime = limitDegrees(LPrime)
+	fmt.Printf("L Prime: %f (%f rad)\n", LPrime, degToRad(LPrime))
 
 	// Calculate the Mean Elongation of the Moon, D (in degrees)
 	D := polynomial(JCE, 297.8501921, 445267.1114034, -0.0018819, 1/545868.0, -1/113065000.0)
 	D = limitDegrees(D)
+	fmt.Printf("D: %f (%f rad)\n", D, degToRad(D))
 
 	// Calculate the Sun's Mean Anomaly, M (in degrees)
 	M := polynomial(JCE, 357.5291092, 35999.0502909, -0.0001536, 1/24490000.0)
 	M = limitDegrees(M)
+	fmt.Printf("M: %f (%f rad)\n", M, degToRad(M))
 
 	// Calculate the Moon's Argument of Latitude, F (in degrees)
 	F := polynomial(JCE, 93.2720950, 483202.0175233, -0.0036539, -1/3526000.0, 1/863310000.0)
 	F = limitDegrees(F)
+	fmt.Printf("F: %f (%f rad)\n", F, degToRad(F))
 
 	// Calculate term l (in 0.000001 degrees), r (in 0.001 kilometers), and
 	// b (in 0.000001 degrees)
 	E := 1.0 - 0.002516*JCE - 0.0000074*math.Pow(JCE, 2)
+	fmt.Printf("E: %f (%f rad)\n", E, degToRad(E))
 	l, r, b := getMoonPeriodicTermSum(E, D, M, MPrime, F)
 
 	// Calculate term a
-	a1 := 119.75 + 131.849*JCE
-	a2 := 53.09 + 479264.29*JCE
-	a3 := 313.45 + 481266.484*JCE
+	a1 := limitDegrees(119.75 + 131.849*JCE)
+	a2 := limitDegrees(53.09 + 479264.29*JCE)
+	a3 := limitDegrees(313.45 + 481266.484*JCE)
+	fmt.Printf("A1: %f (%f rad)\n", a1, degToRad(a1))
+	fmt.Printf("A2: %f (%f rad)\n", a2, degToRad(a2))
+	fmt.Printf("A3: %f (%f rad)\n", a3, degToRad(a3))
 
 	// Calculate term Δl and Δb
 	deltal := 3958*math.Sin(degToRad(a1)) +
 		1962*math.Sin(degToRad(LPrime-F)) +
 		318*math.Sin(degToRad(a2))
+	fmt.Printf("deltaL: %f\n", deltal)
 
 	deltab := -2235*math.Sin(degToRad(LPrime)) +
 		382*math.Sin(degToRad(a3)) +
@@ -273,17 +298,21 @@ func getMoonGeocentricPosition(JCE, MPrime float64) (float64, float64, float64) 
 		175*math.Sin(degToRad(a1+F)) +
 		127*math.Sin(degToRad(LPrime-MPrime)) -
 		115*math.Sin(degToRad(LPrime+MPrime))
+	fmt.Printf("deltaB: %f (%f rad)\n", deltab, degToRad(deltab))
 
 	// Calculate the Moon's Longitude, λ' (in degrees), then limit it to 0 and 360
 	lambdaPrime := LPrime + (l+deltal)/1_000_000
 	lambdaPrime = limitDegrees(lambdaPrime)
+	fmt.Printf("LAMBDA PRIME: %f (%f rad)\n", lambdaPrime, degToRad(lambdaPrime))
 
 	// Calculate the Moon's Latitude, β (in degrees), then limit it to 0 and 360
 	beta := (b + deltab) / 1_000_000
 	beta = limitDegrees(beta)
+	fmt.Printf("BETA: %f (%f rad)\n", beta, degToRad(beta))
 
 	// Calculate the Moon's Distance From the Center of Earth, Δ (in kilometers)
 	dDelta := 385000.56 + r/1000
+	fmt.Printf("D DELTA: %f\n", dDelta)
 
 	return lambdaPrime, beta, dDelta
 }

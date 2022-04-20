@@ -167,7 +167,7 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 	// Change time to 0 UT
 	tz := date.Location()
 	_, tzOffset := date.Zone()
-	dt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	dt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, tz)
 
 	// Set TT to zero
 	ttZero := *opts

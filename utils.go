@@ -64,3 +64,9 @@ func dayFractionToTime(dt time.Time, f float64, tz *time.Location) time.Time {
 	fs := int(math.Round(f * 24 * 60 * 60))
 	return time.Date(dt.Year(), dt.Month(), dt.Day(), 0, 0, fs, 0, tz)
 }
+
+func fractionDiff(f1, f2 float64) int {
+	f1s := int(math.Round(f1 * 24 * 60 * 60))
+	f2s := int(math.Round(f2 * 24 * 60 * 60))
+	return f2s - f1s
+}

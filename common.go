@@ -166,9 +166,8 @@ func getLocalHourAngle(elevation, latitude, sunDeclination float64) float64 {
 	latitudeRad := degToRad(latitude)
 	elevationRad := degToRad(elevation)
 
-	H := math.Acos(
-		(math.Sin(elevationRad) - math.Sin(latitudeRad)*math.Sin(deltaRad)) /
-			(math.Cos(latitudeRad) * math.Cos(deltaRad)))
+	H := math.Acos((math.Sin(elevationRad) - math.Sin(latitudeRad)*math.Sin(deltaRad)) /
+		(math.Cos(latitudeRad) * math.Cos(deltaRad)))
 	H = radToDeg(H)
 	H = limit180Degrees(H)
 	return H
