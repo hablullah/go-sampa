@@ -35,7 +35,7 @@ func limitZeroOne(val float64) float64 {
 }
 
 func limitFullCircle(val float64) float64 {
-	if int(math.Round(math.Abs(val)/360)) == 1 {
+	if int(math.Round(math.Abs(val)/360)) >= 1 {
 		val = limitDegrees(val)
 	}
 	return val

@@ -1,6 +1,6 @@
 package testdata
 
-// Sun events for Los Angeles assuming observer in sea level, ignoring DST.
+// Sun events for Tromso assuming observer in sea level, ignoring DST.
 // Taken from AccurateTimes.
 var SunTromso = TestData{
 	Name:     "Tromso",
