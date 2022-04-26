@@ -15,7 +15,6 @@ type MoonData struct {
 	JulianEphemerisDay           float64
 	JulianEphemerisCentury       float64
 	JulianEphemerisMillenium     float64
-	MeanAnomaly                  float64
 	GeocentricLongitude          float64
 	GeocentricLatitude           float64
 	GeocentricDistance           float64
@@ -37,6 +36,8 @@ type MoonData struct {
 	TopocentricZenithAngle       float64
 	TopocentricAstroAzimuthAngle float64
 	TopocentricAzimuthAngle      float64
+	Elongation                   float64
+	PercentIlluminated           float64
 }
 
 type CustomMoonEvent struct {
@@ -74,8 +75,7 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 
 	// 2. Calculate the Moon Geocentric Longitude, Latitude, and Distance Between
 	// the Centers of Earth and Moon
-	MPrime := getMoonMeanAnomaly(JCE)
-	lambdaPrime, beta, dDelta := getMoonGeocentricPosition(JCE, MPrime)
+	lambdaPrime, beta, dDelta := getMoonGeocentricPosition(JCE)
 
 	// 3. Calculate the Moon's Equatorial Horizontal Parallax (π in degrees)
 	pi := math.Asin(6378.14 / dDelta)
@@ -117,6 +117,15 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 	// 14. Calculate the topocentric azimuth angle (in degrees)
 	astroAzimuth, azimuth := getTopocentricAzimuthAngle(loc.Latitude, deltaPrime, HPrime)
 
+	// Calculate Moon elongation and illumination percentage
+	sun, err := GetSunPosition(dt, loc, opts)
+	if err != nil {
+		return MoonData{}, fmt.Errorf("sun-moon position error: %w", err)
+	}
+
+	E := getMoonElongation(sun, beta, lambdaPrime)
+	k := getMoonIllumination(sun, E, dDelta)
+
 	return MoonData{
 		DateTime:                     dt,
 		JulianDay:                    JD,
@@ -124,7 +133,6 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 		JulianEphemerisDay:           JDE,
 		JulianEphemerisCentury:       JCE,
 		JulianEphemerisMillenium:     JME,
-		MeanAnomaly:                  MPrime,
 		GeocentricLongitude:          lambdaPrime,
 		GeocentricLatitude:           beta,
 		GeocentricDistance:           dDelta,
@@ -146,6 +154,8 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 		TopocentricZenithAngle:       zenith,
 		TopocentricAstroAzimuthAngle: astroAzimuth,
 		TopocentricAzimuthAngle:      azimuth,
+		Elongation:                   E,
+		PercentIlluminated:           k,
 	}, nil
 }
 
@@ -225,13 +235,7 @@ func GetMoonEvents(date time.Time, loc Location, opts *Options, customEvents ...
 	}, nil
 }
 
-func getMoonMeanAnomaly(JCE float64) float64 {
-	MPrime := polynomial(JCE, 134.9633964, 477198.8675055, 0.0087414, 1/69699.0, -1/14712000.0)
-	MPrime = limitDegrees(MPrime)
-	return MPrime
-}
-
-func getMoonGeocentricPosition(JCE, MPrime float64) (float64, float64, float64) {
+func getMoonGeocentricPosition(JCE float64) (float64, float64, float64) {
 	// Calculate the Moon's Mean Longitude, L' (in degrees)
 	LPrime := polynomial(JCE, 218.3164477, 481267.88123421, -0.0015786, 1/538841.0, -1/65194000.0)
 	LPrime = limitDegrees(LPrime)
@@ -243,6 +247,10 @@ func getMoonGeocentricPosition(JCE, MPrime float64) (float64, float64, float64) 
 	// Calculate the Sun's Mean Anomaly, M (in degrees)
 	M := polynomial(JCE, 357.5291092, 35999.0502909, -0.0001536, 1/24490000.0)
 	M = limitDegrees(M)
+
+	// Calculate the Moon's Mean Anomaly, M' (in degrees)
+	MPrime := polynomial(JCE, 134.9633964, 477198.8675055, 0.0087414, 1/69699.0, -1/14712000.0)
+	MPrime = limitDegrees(MPrime)
 
 	// Calculate the Moon's Argument of Latitude, F (in degrees)
 	F := polynomial(JCE, 93.2720950, 483202.0175233, -0.0036539, -1/3526000.0, 1/863310000.0)
@@ -340,4 +348,24 @@ func getEquatorialMoonCoordinates(latitude, elevation, pi, alpha, delta, H float
 	deltaPrime = radToDeg(deltaPrime)
 
 	return deltaAlpha, alphaPrime, deltaPrime
+}
+
+func getMoonElongation(sun SunData, geoLat, geoLong float64) float64 {
+	moonGeoLat := degToRad(geoLat)
+	moonGeoLong := degToRad(geoLong)
+	sunGeoLong := degToRad(sun.GeocentricLongitude)
+
+	psi := math.Acos(math.Cos(moonGeoLat) * math.Cos(moonGeoLong-sunGeoLong))
+	psi = radToDeg(psi)
+	psi = limit180Degrees(psi)
+	return psi
+}
+
+func getMoonIllumination(sun SunData, psi float64, geoDistance float64) float64 {
+	psiRad := degToRad(psi)
+	R := sun.EarthRadiusVector * 149597870.700
+	PA := math.Atan((R * math.Sin(psiRad)) / (geoDistance - R*math.Cos(psiRad)))
+	PA = limitValues(math.Pi, PA)
+	k := (1 + math.Cos(PA)) / 2
+	return k
 }
