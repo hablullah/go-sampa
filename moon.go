@@ -50,6 +50,7 @@ type MoonEvents struct {
 	Transit  MoonData
 	Moonrise MoonData
 	Moonset  MoonData
+	Others   map[string]MoonData
 }
 
 func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error) {
@@ -228,10 +229,22 @@ func GetMoonEvents(date time.Time, loc Location, opts *Options, customEvents ...
 		return MoonEvents{}, fmt.Errorf("moonset error: %v", err)
 	}
 
+	// Calculate other events
+	otherEvents := map[string]MoonData{}
+	for _, e := range customEvents {
+		et := getCelestialAtElevation(args, st0, e.MoonElevation(today), e.BeforeTransit)
+		eData, err := GetMoonPosition(et, loc, opts)
+		if err != nil {
+			return MoonEvents{}, fmt.Errorf("event \"%s\" error: %v", e.Name, err)
+		}
+		otherEvents[e.Name] = eData
+	}
+
 	return MoonEvents{
 		Transit:  mtData,
 		Moonrise: mrData,
 		Moonset:  msData,
+		Others:   otherEvents,
 	}, nil
 }
 
