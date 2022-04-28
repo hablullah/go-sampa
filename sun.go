@@ -8,13 +8,10 @@ import (
 	"github.com/hablullah/go-juliandays"
 )
 
-type SunData struct {
+// SunPosition is the result from calculating Sun position.
+type SunPosition struct {
 	DateTime                     time.Time
 	JulianDay                    float64
-	JulianCentury                float64
-	JulianEphemerisDay           float64
-	JulianEphemerisCentury       float64
-	JulianEphemerisMillenium     float64
 	EarthHeliocentricLongitude   float64
 	EarthHeliocentricLatitude    float64
 	EarthRadiusVector            float64
@@ -41,23 +38,32 @@ type SunData struct {
 	SurfaceIncidenceAngle        float64
 }
 
+// IsZero reports whether Sun position is empty or not.
+func (sp SunPosition) IsZero() bool {
+	return sp.DateTime.IsZero()
+}
+
+// CustomSunEvent is the custom event when Sun reach the specified elevation angle.
 type CustomSunEvent struct {
 	Name          string
 	BeforeTransit bool
-	SunElevation  func(todayData SunData) float64
+	Elevation     func(todayData SunPosition) float64
 }
 
+// SunEvents is the positions of Sun when rise, set, transit, and reached
+// custom elevation angles.
 type SunEvents struct {
-	Transit SunData
-	Sunrise SunData
-	Sunset  SunData
-	Others  map[string]SunData
+	Transit SunPosition
+	Sunrise SunPosition
+	Sunset  SunPosition
+	Others  map[string]SunPosition
 }
 
-func GetSunPosition(dt time.Time, loc Location, opts *Options) (SunData, error) {
+// GetSunPosition calculates the Sun position for the specified location and date time.
+func GetSunPosition(dt time.Time, loc Location, opts *Options) (SunPosition, error) {
 	// Make sure date time is not zero
 	if dt.IsZero() {
-		return SunData{}, nil
+		return SunPosition{}, nil
 	}
 
 	// Set default value
@@ -67,7 +73,7 @@ func GetSunPosition(dt time.Time, loc Location, opts *Options) (SunData, error) 
 	// 1. Calculate the Julian and Julian ephemeris day century and millennium
 	JD, err := juliandays.FromTime(dt)
 	if err != nil {
-		return SunData{}, err
+		return SunPosition{}, err
 	}
 
 	JC := getJulianCentury(JD)
@@ -125,13 +131,9 @@ func GetSunPosition(dt time.Time, loc Location, opts *Options) (SunData, error) 
 	// 16. Calculate the incidence angle for a surface oriented in any direction (in degrees)
 	incidenceAngle := getSurfaceIncidenceAngle(opts.SurfaceSlope, opts.SurfaceAzimuthRotation, zenith, astroAzimuth)
 
-	return SunData{
+	return SunPosition{
 		DateTime:                     dt,
 		JulianDay:                    JD,
-		JulianCentury:                JC,
-		JulianEphemerisDay:           JDE,
-		JulianEphemerisCentury:       JCE,
-		JulianEphemerisMillenium:     JME,
 		EarthHeliocentricLongitude:   L,
 		EarthHeliocentricLatitude:    B,
 		EarthRadiusVector:            R,
@@ -159,6 +161,8 @@ func GetSunPosition(dt time.Time, loc Location, opts *Options) (SunData, error) 
 	}, nil
 }
 
+// GetSunEvents calculates the time when Sun rise, set, transit, and reached elevation angles
+// that defined by `CustomSunEvent`.
 func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...CustomSunEvent) (SunEvents, error) {
 	// Set default value
 	loc = setDefaultLocation(loc)
@@ -228,9 +232,9 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 	}
 
 	// Calculate other events
-	otherEvents := map[string]SunData{}
+	otherEvents := map[string]SunPosition{}
 	for _, e := range customEvents {
-		et := getCelestialAtElevation(args, st0, e.SunElevation(today), e.BeforeTransit)
+		et := getCelestialAtElevation(args, st0, e.Elevation(today), e.BeforeTransit)
 		eData, err := GetSunPosition(et, loc, opts)
 		if err != nil {
 			return SunEvents{}, fmt.Errorf("event \"%s\" error: %v", e.Name, err)

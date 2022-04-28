@@ -7,6 +7,7 @@ import (
 	"github.com/hablullah/go-juliandays"
 )
 
+// MoonPhases is times when Moon reach its phases.
 type MoonPhases struct {
 	NewMoon      time.Time
 	FirstQuarter time.Time
@@ -16,6 +17,7 @@ type MoonPhases struct {
 	MonthLength  float64
 }
 
+// GetMoonPhases calculate the time for Moon phases around the specified date time.
 func GetMoonPhases(dt time.Time, opts *Options) MoonPhases {
 	// Set default value
 	opts = setDefaultOptions(opts)

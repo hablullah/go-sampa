@@ -1,5 +1,7 @@
 package sampa
 
+// Options is the advanced configuration for calculating
+// the Sun and Moon position.
 type Options struct {
 	SurfaceSlope           float64
 	SurfaceAzimuthRotation float64

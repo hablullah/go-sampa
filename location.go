@@ -1,5 +1,7 @@
 package sampa
 
+// Location is coordinate and data for the location where Sun and Moon
+// position will be calculated.
 type Location struct {
 	Latitude    float64
 	Longitude   float64

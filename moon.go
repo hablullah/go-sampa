@@ -8,13 +8,10 @@ import (
 	"github.com/hablullah/go-juliandays"
 )
 
-type MoonData struct {
+// MoonPosition is the result from calculating Moon position.
+type MoonPosition struct {
 	DateTime                     time.Time
 	JulianDay                    float64
-	JulianCentury                float64
-	JulianEphemerisDay           float64
-	JulianEphemerisCentury       float64
-	JulianEphemerisMillenium     float64
 	GeocentricLongitude          float64
 	GeocentricLatitude           float64
 	GeocentricDistance           float64
@@ -40,23 +37,32 @@ type MoonData struct {
 	PercentIlluminated           float64
 }
 
+// IsZero reports whether Moon position is empty or not.
+func (mp MoonPosition) IsZero() bool {
+	return mp.DateTime.IsZero()
+}
+
+// CustomMoonEvent is the custom event when Moon reach the specified elevation angle.
 type CustomMoonEvent struct {
 	Name          string
 	BeforeTransit bool
-	MoonElevation func(todayData MoonData) float64
+	Elevation     func(todayData MoonPosition) float64
 }
 
+// MoonEvents is the positions of Moon when rise, set, transit, and reached
+// custom elevation angles.
 type MoonEvents struct {
-	Transit  MoonData
-	Moonrise MoonData
-	Moonset  MoonData
-	Others   map[string]MoonData
+	Transit  MoonPosition
+	Moonrise MoonPosition
+	Moonset  MoonPosition
+	Others   map[string]MoonPosition
 }
 
-func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error) {
+// GetMoonPosition calculates the Moon position for the specified location and date time.
+func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonPosition, error) {
 	// Make sure date time is not zero
 	if dt.IsZero() {
-		return MoonData{}, nil
+		return MoonPosition{}, nil
 	}
 
 	// Set default value
@@ -66,7 +72,7 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 	// 1. Calculate the Julian and Julian Ephemeris Day, Century, and Millennium
 	JD, err := juliandays.FromTime(dt)
 	if err != nil {
-		return MoonData{}, err
+		return MoonPosition{}, err
 	}
 
 	JC := getJulianCentury(JD)
@@ -121,19 +127,15 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 	// Calculate Moon elongation and illumination percentage
 	sun, err := GetSunPosition(dt, loc, opts)
 	if err != nil {
-		return MoonData{}, fmt.Errorf("sun-moon position error: %w", err)
+		return MoonPosition{}, fmt.Errorf("sun-moon position error: %w", err)
 	}
 
 	E := getMoonElongation(sun, beta, lambdaPrime)
 	k := getMoonIllumination(sun, E, dDelta)
 
-	return MoonData{
+	return MoonPosition{
 		DateTime:                     dt,
 		JulianDay:                    JD,
-		JulianCentury:                JC,
-		JulianEphemerisDay:           JDE,
-		JulianEphemerisCentury:       JCE,
-		JulianEphemerisMillenium:     JME,
 		GeocentricLongitude:          lambdaPrime,
 		GeocentricLatitude:           beta,
 		GeocentricDistance:           dDelta,
@@ -160,6 +162,8 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonData, error
 	}, nil
 }
 
+// GetMoonEvents calculates the time when Moon rise, set, transit, and reached elevation angles
+// that defined by `CustomMoonEvent`.
 func GetMoonEvents(date time.Time, loc Location, opts *Options, customEvents ...CustomMoonEvent) (MoonEvents, error) {
 	// Set default value
 	loc = setDefaultLocation(loc)
@@ -230,9 +234,9 @@ func GetMoonEvents(date time.Time, loc Location, opts *Options, customEvents ...
 	}
 
 	// Calculate other events
-	otherEvents := map[string]MoonData{}
+	otherEvents := map[string]MoonPosition{}
 	for _, e := range customEvents {
-		et := getCelestialAtElevation(args, st0, e.MoonElevation(today), e.BeforeTransit)
+		et := getCelestialAtElevation(args, st0, e.Elevation(today), e.BeforeTransit)
 		eData, err := GetMoonPosition(et, loc, opts)
 		if err != nil {
 			return MoonEvents{}, fmt.Errorf("event \"%s\" error: %v", e.Name, err)
@@ -363,7 +367,7 @@ func getEquatorialMoonCoordinates(latitude, elevation, pi, alpha, delta, H float
 	return deltaAlpha, alphaPrime, deltaPrime
 }
 
-func getMoonElongation(sun SunData, geoLat, geoLong float64) float64 {
+func getMoonElongation(sun SunPosition, geoLat, geoLong float64) float64 {
 	moonGeoLat := degToRad(geoLat)
 	moonGeoLong := degToRad(geoLong)
 	sunGeoLong := degToRad(sun.GeocentricLongitude)
@@ -374,7 +378,7 @@ func getMoonElongation(sun SunData, geoLat, geoLong float64) float64 {
 	return psi
 }
 
-func getMoonIllumination(sun SunData, psi float64, geoDistance float64) float64 {
+func getMoonIllumination(sun SunPosition, psi float64, geoDistance float64) float64 {
 	psiRad := degToRad(psi)
 	R := sun.EarthRadiusVector * 149597870.700
 	PA := math.Atan((R * math.Sin(psiRad)) / (geoDistance - R*math.Cos(psiRad)))

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type celestialData struct {
+type celestialPosition struct {
 	ApparentSiderealTime     float64
 	GeocentricRightAscension float64
 	GeocentricDeclination    float64
@@ -15,27 +15,27 @@ type celestialArgs struct {
 	date      time.Time
 	location  Location
 	deltaT    float64
-	today     celestialData
-	yesterday celestialData
-	tomorrow  celestialData
+	today     celestialPosition
+	yesterday celestialPosition
+	tomorrow  celestialPosition
 }
 
-func toCelestial(data interface{}) celestialData {
+func toCelestial(data interface{}) celestialPosition {
 	switch v := data.(type) {
-	case SunData:
-		return celestialData{
+	case SunPosition:
+		return celestialPosition{
 			ApparentSiderealTime:     v.ApparentSiderealTime,
 			GeocentricRightAscension: v.GeocentricRightAscension,
 			GeocentricDeclination:    v.GeocentricDeclination,
 		}
-	case MoonData:
-		return celestialData{
+	case MoonPosition:
+		return celestialPosition{
 			ApparentSiderealTime:     v.ApparentSiderealTime,
 			GeocentricRightAscension: v.GeocentricRightAscension,
 			GeocentricDeclination:    v.GeocentricDeclination,
 		}
 	}
-	return celestialData{}
+	return celestialPosition{}
 }
 
 func getCelestialTransit(args celestialArgs, approx float64) time.Time {
