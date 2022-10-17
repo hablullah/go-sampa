@@ -53,6 +53,7 @@ func getCelestialTransit(args celestialArgs, approx float64) time.Time {
 
 		// Calculate the local hour angle for the sun transit
 		// TODO: in Meeus HPrime = nu - loc.Longitude - alphaPrime
+		// Here we use the one from Reda in his SPA paper.
 		HPrime := nu + args.location.Longitude - alphaPrime
 		HPrime = limit180Degrees(HPrime)
 
@@ -106,6 +107,7 @@ func getCelestialAtElevation(args celestialArgs, approxTransit, celestialElevati
 
 		// Calculate the local hour angle
 		// TODO: in Meeus HPrime = nu - loc.Longitude - alphaPrime
+		// Here we use the one from Reda in his SPA paper.
 		HPrime := nu + args.location.Longitude - alphaPrime
 		HPrime = limit180Degrees(HPrime)
 
