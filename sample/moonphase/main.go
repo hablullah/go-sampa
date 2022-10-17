@@ -9,11 +9,10 @@ import (
 )
 
 func main() {
-	tz := time.FixedZone("WIB", 7*60*60)
-	dt := time.Date(1973, 12, 31, 0, 0, 0, 0, tz)
+	tz := time.FixedZone("CST", 1*60*60)
+	dt := time.Date(2022, 2, 1, 0, 0, 0, 0, tz)
 
-	opts := &sampa.Options{DeltaT: 72.8}
-	phases := sampa.GetMoonPhases(dt, opts)
+	phases := sampa.GetMoonPhases(dt, nil)
 	bt, _ := json.MarshalIndent(&phases, "", "  ")
 	fmt.Println(string(bt))
 }

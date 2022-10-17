@@ -8,86 +8,84 @@ import (
 )
 
 func main() {
-	location, dt, limit := jakarta()
+	location, dt, limit := tromso()
 
 	for dt.Before(limit) {
 		e, _ := sampa.GetMoonEvents(dt, location, nil)
 
 		fmt.Printf("%s\t%s\t%s\t%s\n",
 			dt.Format("2006-01-02"),
-			e.Moonrise.DateTime.Format("15:04:05"),
-			e.Transit.DateTime.Format("15:04:05"),
-			e.Moonset.DateTime.Format("15:04:05"))
+			strTime(e.Moonrise.DateTime),
+			strTime(e.Transit.DateTime),
+			strTime(e.Moonset.DateTime))
 		dt = dt.AddDate(0, 0, 1)
 	}
 }
 
+// tromso is sample for location in north frigid zone.
+func tromso() (sampa.Location, time.Time, time.Time) {
+	location := sampa.Location{
+		Latitude:    69.682778,
+		Longitude:   18.942778,
+		Elevation:   0,
+		Temperature: 10,
+		Pressure:    1010,
+	}
+
+	tz := time.FixedZone("CST", 1*60*60)
+	start := time.Date(2022, 1, 1, 0, 0, 0, 0, tz)
+	limit := start.AddDate(1, 0, 0)
+	return location, start, limit
+}
+
+// london is sample for location in north temperate zone.
+func london() (sampa.Location, time.Time, time.Time) {
+	location := sampa.Location{
+		Latitude:    51.507222,
+		Longitude:   -0.1275,
+		Elevation:   11,
+		Temperature: 10,
+	}
+
+	tz := time.UTC
+	start := time.Date(2022, 1, 1, 0, 0, 0, 0, tz)
+	limit := start.AddDate(1, 0, 0)
+	return location, start, limit
+}
+
+// jakarta is sample for location in torrid zone.
 func jakarta() (sampa.Location, time.Time, time.Time) {
 	location := sampa.Location{
-		Latitude:    -6.21138888888889,
-		Longitude:   106.845277777778,
-		Elevation:   0,
+		Latitude:    -6.175,
+		Longitude:   106.825,
+		Elevation:   8,
 		Temperature: 10,
 	}
 
 	tz := time.FixedZone("WIB", 7*60*60)
-	start := time.Date(2010, 1, 1, 0, 0, 0, 0, tz)
+	start := time.Date(2022, 1, 1, 0, 0, 0, 0, tz)
 	limit := start.AddDate(1, 0, 0)
 	return location, start, limit
 }
 
-func losAngeles() (sampa.Location, time.Time, time.Time) {
+// wellington is sample for location in south temperate zone.
+func wellington() (sampa.Location, time.Time, time.Time) {
 	location := sampa.Location{
-		Latitude:    34.16667,
-		Longitude:   -118.46667,
+		Latitude:    -41.288889,
+		Longitude:   174.777222,
 		Elevation:   0,
 		Temperature: 10,
 	}
 
-	tz := time.FixedZone("EST", -8*60*60)
-	start := time.Date(2010, 1, 1, 0, 0, 0, 0, tz)
+	tz := time.FixedZone("NZST", 12*60*60)
+	start := time.Date(2022, 1, 1, 0, 0, 0, 0, tz)
 	limit := start.AddDate(1, 0, 0)
 	return location, start, limit
 }
 
-func laPaz() (sampa.Location, time.Time, time.Time) {
-	location := sampa.Location{
-		Latitude:    -16.5,
-		Longitude:   -68.2,
-		Elevation:   3812,
-		Temperature: 10,
+func strTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
 	}
-
-	tz := time.FixedZone("BOT", -4*60*60)
-	start := time.Date(2010, 1, 1, 0, 0, 0, 0, tz)
-	limit := start.AddDate(1, 0, 0)
-	return location, start, limit
-}
-
-func mexicoCity() (sampa.Location, time.Time, time.Time) {
-	location := sampa.Location{
-		Latitude:    19.4333,
-		Longitude:   -99.0667,
-		Elevation:   2216,
-		Temperature: 10,
-	}
-
-	tz := time.FixedZone("CDT", -6*60*60)
-	start := time.Date(2010, 1, 1, 0, 0, 0, 0, tz)
-	limit := start.AddDate(1, 0, 0)
-	return location, start, limit
-}
-
-func tromso() (sampa.Location, time.Time, time.Time) {
-	location := sampa.Location{
-		Latitude:    69.1044,
-		Longitude:   18.0594,
-		Elevation:   0,
-		Temperature: 10,
-	}
-
-	tz := time.FixedZone("CST", 1*60*60)
-	start := time.Date(2010, 1, 1, 0, 0, 0, 0, tz)
-	limit := start.AddDate(1, 0, 0)
-	return location, start, limit
+	return t.Format("15:04:05")
 }
