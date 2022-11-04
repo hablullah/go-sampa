@@ -8,12 +8,12 @@ import (
 )
 
 func main() {
-	location, dt, limit := tromso()
+	location, dt, limit := wellington()
 
 	for dt.Before(limit) {
 		e, _ := sampa.GetMoonEvents(dt, location, nil)
 
-		fmt.Printf("%s\t%s\t%s\t%s\n",
+		fmt.Printf("{%q,%q,%q,%q},\n",
 			dt.Format("2006-01-02"),
 			strTime(e.Moonrise.DateTime),
 			strTime(e.Transit.DateTime),

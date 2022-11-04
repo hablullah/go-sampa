@@ -17,5 +17,9 @@ func setDefaultOptions(opts *Options) *Options {
 		}
 	}
 
+	if opts.DeltaT == 0 {
+		opts.DeltaT = 66.9
+	}
+
 	return opts
 }

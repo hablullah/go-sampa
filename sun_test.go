@@ -10,20 +10,16 @@ import (
 )
 
 func TestGetSunEvents(t *testing.T) {
-	// Check tropical area
-	testSunEvents(t, testdata.SunJakarta)
-
-	// Check sub tropical area
-	testSunEvents(t, testdata.SunLosAngeles)
-
-	// Check area in extreme latitude
-	testSunEvents(t, testdata.SunTromso)
+	testSunEvents(t, testdata.TromsoSun)     // North Frigid
+	testSunEvents(t, testdata.LondonSun)     // North Temperate
+	testSunEvents(t, testdata.JakartaSun)    // Torrid
+	testSunEvents(t, testdata.WellingtonSun) // South Temperate
 }
 
 func testSunEvents(t *testing.T, td testdata.TestData) {
 	for _, tt := range td.Times {
 		location := newTestLocation(td.Location)
-		dt, _ := time.ParseInLocation("02/01/2006", tt.Date, td.Z)
+		dt, _ := time.ParseInLocation("2006-01-02", tt.Date, td.Z)
 
 		e, err := sampa.GetSunEvents(dt, location, nil)
 		assert.Nil(t, err, e, "%s %s error", td.Name, tt.Date)

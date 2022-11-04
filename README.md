@@ -16,7 +16,9 @@ For Sun and Moon position, this library uses [SPA][spa] and [SAMPA][sampa] algor
 
 ## Accuracy
 
-> Disclaimer: I'm not an astronomer or physicist. I'm just an amateur with some interests toward celestial bodies.
+> **Disclaimer**: I'm not an astronomer or physicist. I'm just an amateur with some interests toward celestial bodies.
+>
+> **Notice**: tests in this package do not represent calculation accuracy. It just a baseline so the future change in this package can be tracked to make sure it will give similar results with the current calculation.
 
 This package has been compared to several other apps i.e. [Time and Date][timedate], [Sunrise Sunset Calendars][ssc] and [Accurate Times][accut]. I've found that the results are accurate to within a minute. So, while the results of this package is in seconds, don't expect it to be exactly accurate to seconds, and instead it should be treated as rounding suggestions.
 

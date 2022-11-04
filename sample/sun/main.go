@@ -11,10 +11,9 @@ func main() {
 	location, dt, limit := wellington()
 
 	for dt.Before(limit) {
-		// dt = time.
 		e, _ := sampa.GetSunEvents(dt, location, nil)
 
-		fmt.Printf("%s\t%s\t%s\t%s\n",
+		fmt.Printf("{%q,%q,%q,%q},\n",
 			dt.Format("2006-01-02"),
 			strTime(e.Sunrise.DateTime),
 			strTime(e.Transit.DateTime),

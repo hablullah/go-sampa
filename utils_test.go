@@ -38,12 +38,10 @@ func assertSunEvents(t *testing.T, name string, dt time.Time, expected testdata.
 	transitMsg := fmt.Sprintf("Transit, "+msgFormat, name, strDate, expected.Transit, strTransit)
 	sunsetMsg := fmt.Sprintf("Sunset, "+msgFormat, name, strDate, expected.Set, strSunset)
 
-	// For transit, diff only allowed up to 10 seconds
+	// Diff only allowed up to 10 seconds
 	assert.LessOrEqual(t, diffTransit, 10, transitMsg)
-
-	// For sunrise and sunset, diff is allowed up to 60 seconds
-	assert.LessOrEqual(t, diffSunrise, 60, sunriseMsg)
-	assert.LessOrEqual(t, diffSunset, 60, sunsetMsg)
+	assert.LessOrEqual(t, diffSunrise, 10, sunriseMsg)
+	assert.LessOrEqual(t, diffSunset, 10, sunsetMsg)
 }
 
 func assertMoonEvents(t *testing.T, name string, dt time.Time, expected testdata.TestTime, got sampa.MoonEvents) {
@@ -63,12 +61,10 @@ func assertMoonEvents(t *testing.T, name string, dt time.Time, expected testdata
 	transitMsg := fmt.Sprintf("Transit, "+msgFormat, name, strDate, expected.Transit, strTransit)
 	sunsetMsg := fmt.Sprintf("Moonset, "+msgFormat, name, strDate, expected.Set, strMoonset)
 
-	// For transit, diff only allowed up to 10 seconds
+	// Diff only allowed up to 10 seconds
 	assert.LessOrEqual(t, diffTransit, 10, transitMsg)
-
-	// For moonrise and moonset, diff is allowed up to 60 seconds
-	assert.LessOrEqual(t, diffMoonrise, 60, sunriseMsg)
-	assert.LessOrEqual(t, diffMoonset, 60, sunsetMsg)
+	assert.LessOrEqual(t, diffMoonrise, 10, sunriseMsg)
+	assert.LessOrEqual(t, diffMoonset, 10, sunsetMsg)
 }
 
 func diffTestTime(dt time.Time, expected string, got time.Time, strictEmpty bool) int {
