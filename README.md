@@ -16,11 +16,23 @@ For Sun and Moon position, this library uses [SPA][spa] and [SAMPA][sampa] algor
 
 ## Accuracy
 
-This package has been compared to several other apps e.g. [Accurate Times][accut], [Time and Date][timedate] and [Sunrise Sunset Calendars][ssc], and I've found that the results are accurate to within a minute. So, while the results of this package is in seconds, don't expect it to be exactly accurate to seconds, and instead it should be treated as rounding suggestions.
+> Disclaimer: I'm not an astronomer or physicist. I'm just an amateur with some interests toward celestial bodies.
 
-While calculating rise and set time, this package will use your elevation as one of the calculation parameter. If it's very high, it can affect the times by a couple of minutes thanks to atmospheric refraction.
+This package has been compared to several other apps i.e. [Time and Date][timedate], [Sunrise Sunset Calendars][ssc] and [Accurate Times][accut]. I've found that the results are accurate to within a minute. So, while the results of this package is in seconds, don't expect it to be exactly accurate to seconds, and instead it should be treated as rounding suggestions.
 
-Finally, this package doesn't account to Daylight Saving Team, so adjust your timezone accordingly.
+Between the three comparison apps that I mentioned before, I mostly use [Accurate Times][accut] as baseline since it's used in official capacity (to some extend) by Jordan and Indonesia. You can check the comparison result between this package and Accurate Times in spreadsheets in `doc` directory.
+
+For most days, the differences is only in seconds. However, for some days you will see that there are days where the difference suddenly spiked compared to previous days. This can be seen for Sunrise in Tromso at 17th May 2022 and Moon transit in Jakarta at 24th February 2022.
+
+I'm not sure what is the reason, but one of the possibility is because the difference in algorithm between this package and Accurate Times (which uses VSOP87). Fortunately, our results are correct when compared with [Time and Date][timedate], so hopefully this package should be good enough to use.
+
+## Additional Notes
+
+While calculating rise and set time, this package will uses your elevation as one of the calculation parameter. If it's very high, it can affect the times by a couple of minutes thanks to atmospheric refraction. Thanks to this, most apps that I know decided to set elevation to zero, which means every locations will be treated as located in sea level.
+
+Since we are talking about rise and set time, apparently there are no algorithms that could exactly calculate when the Sun will [rise][when-rise] and [set][when-set], and I assume it's the same for the Moon. With that said, please note that the calculated rise and set time might not be accurate to the reality.
+
+Finally, this package doesn't account to Daylight Saving Team (which personally I believe is useless and should be discarded), so adjust your timezone accordingly.
 
 ## Resources
 
@@ -38,5 +50,7 @@ Go-Prayer is distributed using [MIT] license.
 [sampa]: https://midcdmz.nrel.gov/sampa/
 [accut]: https://www.astronomycenter.net/accut.html?l=en
 [timedate]: https://www.timeanddate.com/
+[when-rise]: https://skyandtelescope.org/astronomy-news/we-dont-really-know-when-the-sun-rises/
+[when-set]: https://aty.sdsu.edu/explain/sunset_time.html
 [ssc]: https://www.sunrisesunset.com/
 [mit]: http://choosealicense.com/licenses/mit/
