@@ -20,7 +20,7 @@ For Sun and Moon position, this library uses [SPA][spa] and [SAMPA][sampa] algor
 
 This package has been compared to several other apps i.e. [Time and Date][timedate], [Sunrise Sunset Calendars][ssc] and [Accurate Times][accut]. I've found that the results are accurate to within a minute. So, while the results of this package is in seconds, don't expect it to be exactly accurate to seconds, and instead it should be treated as rounding suggestions.
 
-Between the three comparison apps that I mentioned before, I mostly use [Accurate Times][accut] as baseline since it's used in official capacity (to some extend) by Jordan and Indonesia. You can check the comparison result between this package and Accurate Times in spreadsheets in `doc` directory.
+Between the three comparison apps that I mentioned before, I mostly use [Accurate Times][accut] as baseline since it's used in official capacity (to some extend) by Jordan and Indonesia. You can check the comparison result between this package and Accurate Times in spreadsheets in [`doc`](doc/) directory.
 
 For most days, the differences is only in seconds. However, for some days you will see that there are days where the difference suddenly spiked compared to previous days. This can be seen for Sunrise in Tromso at 17th May 2022 and Moon transit in Jakarta at 24th February 2022.
 
