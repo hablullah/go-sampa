@@ -10,6 +10,18 @@ Package for calculating Sun and Moon position using [SPA][spa] and [SAMPA][sampa
 - Calculate moon phases around a specified date.
 - Fast and (hopefully) accurate enough for amateur use.
 
+## API
+
+You can check the Go documentations to see the available APIs. However, the main interests in this package are:
+
+- Function `GetSunPosition` to calculate Sun location for the given time and location.
+- Function `GetSunEvents` to calculate Sunrise, Sunset, transit and any other additional events for the given time and location.
+- Function `GetMoonPosition` to calculate Moon location for the given time and location.
+- Function `GetMoonEvents` to calculate Moonrise, Moonset, transit and any other additional events for the given time and location.
+- Function `GetMoonPhases` to calculate the time for Moon phases around the specified date time.
+
+Check out [`sample`](sample/) directory on how to use each function.
+
 ## Algorithm
 
 For Sun and Moon position, this library uses [SPA][spa] and [SAMPA][sampa] algorithm that developed by Ibrahim Reda and Afshin Andreas from NREL. For the rise, set and transit time (and also the other events) it uses algorithm from Jean Meeus.

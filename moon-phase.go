@@ -18,6 +18,7 @@ type MoonPhases struct {
 }
 
 // GetMoonPhases calculate the time for Moon phases around the specified date time.
+// It uses timezone in `dt` for the location, so adjust it properly.
 func GetMoonPhases(dt time.Time, opts *Options) MoonPhases {
 	// Set default value
 	opts = setDefaultOptions(opts)
