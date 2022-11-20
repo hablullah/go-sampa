@@ -56,7 +56,7 @@ Finally, this package doesn't account to Daylight Saving Team (which personally 
 
 ## License
 
-Go-Prayer is distributed using [MIT] license.
+Go-Sampa is distributed using [MIT] license.
 
 [doc-badge]: https://pkg.go.dev/badge/github.com/hablullah/go-sampa.svg
 [doc-url]: https://pkg.go.dev/github.com/hablullah/go-sampa
