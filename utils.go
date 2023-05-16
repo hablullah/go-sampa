@@ -46,8 +46,9 @@ func polynomial(x float64, values ...float64) float64 {
 }
 
 func dayFractionToTime(dt time.Time, f float64) time.Time {
-	fs := int(math.Round(f * 24 * 60 * 60))
-	return time.Date(dt.Year(), dt.Month(), dt.Day(), 0, 0, fs, 0, dt.Location())
+	dt = time.Date(dt.Year(), dt.Month(), dt.Day(), 0, 0, 0, 0, dt.Location())
+	seconds := time.Duration(math.Round(f*24*60*60)) * time.Second
+	return dt.Add(seconds)
 }
 
 func fractionDiff(f1, f2 float64) int {
