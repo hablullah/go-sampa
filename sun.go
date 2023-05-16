@@ -209,7 +209,7 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 	// Calculate the approximate sun transit time, st0, in fraction of day
 	// Limit it to value between 0 and 1
 	st0 := (today.GeocentricRightAscension - loc.Longitude - today.ApparentSiderealTime) / 360
-	st0 = limitZeroOne(st0)
+	st0 = limitValue(st0, 1)
 
 	// Calculate transit time
 	st := getCelestialTransit(args, st0)
@@ -265,7 +265,7 @@ func getEarthHeliocentricLongitude(JME float64) float64 {
 		L5*math.Pow(JME, 5)) /
 		math.Pow10(8)
 	L = radToDeg(L)
-	L = limitDegrees(L)
+	L = limitValue(L, 360)
 	return L
 }
 
@@ -303,7 +303,7 @@ func getEarthPeriodicTermSum(key string, JME float64) float64 {
 
 func getSunGeocentricLongitude(L float64) float64 {
 	theta := L + 180
-	theta = limitDegrees(theta)
+	theta = limitValue(theta, 360)
 	return theta
 }
 

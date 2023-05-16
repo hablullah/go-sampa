@@ -76,7 +76,7 @@ func getMeanSiderealTime(JD, JC float64) float64 {
 		360.98564736629*(JD-2451545) +
 		0.000387933*math.Pow(JC, 2) -
 		math.Pow(JC, 3)/38710000
-	nu0 = limitDegrees(nu0)
+	nu0 = limitValue(nu0, 360)
 	return nu0
 }
 
@@ -95,7 +95,7 @@ func getGeocentricRightAscension(beta, epsilon, lambda float64) float64 {
 		math.Sin(lambdaRad)*math.Cos(epsilonRad)-math.Tan(betaRad)*math.Sin(epsilonRad),
 		math.Cos(lambdaRad))
 	alpha = radToDeg(alpha)
-	alpha = limitDegrees(alpha)
+	alpha = limitValue(alpha, 360)
 	return alpha
 }
 
@@ -111,7 +111,7 @@ func getGeocentricDeclination(beta, epsilon, lambda float64) float64 {
 
 func getObserverLocalHourAngle(longitude, nu, alpha float64) float64 {
 	H := nu + longitude - alpha
-	H = limitDegrees(H)
+	H = limitValue(H, 360)
 	return H
 }
 
@@ -153,11 +153,11 @@ func getTopocentricAzimuthAngle(latitude, deltaPrime, HPrime float64) (float64, 
 	astroAzimuth := math.Atan2(math.Sin(HPrimeRad),
 		math.Cos(HPrimeRad)*math.Sin(latitudeRad)-math.Tan(deltaPrimeRad)*math.Cos(latitudeRad))
 	astroAzimuth = radToDeg(astroAzimuth)
-	astroAzimuth = limitDegrees(astroAzimuth)
+	astroAzimuth = limitValue(astroAzimuth, 360)
 
 	// Calculate the topocentric azimuth angle for navigators and solar radiation users (in degrees)
 	azimuth := astroAzimuth + 180
-	azimuth = limitDegrees(azimuth)
+	azimuth = limitValue(azimuth, 360)
 	return astroAzimuth, azimuth
 }
 
@@ -169,7 +169,7 @@ func getLocalHourAngle(elevation, latitude, sunDeclination float64) float64 {
 	H := math.Acos((math.Sin(elevationRad) - math.Sin(latitudeRad)*math.Sin(deltaRad)) /
 		(math.Cos(latitudeRad) * math.Cos(deltaRad)))
 	H = radToDeg(H)
-	H = limit180Degrees(H)
+	H = limitValue(H, 180)
 	return H
 }
 
@@ -178,11 +178,15 @@ func interpolate(factor, d, dMin, dPlus float64) float64 {
 	a := d - dMin
 	b := dPlus - d
 
-	// TODO: in SPA paper a & b values must be limited
-	// between 0 and 1, i.e. a = limitAbsZeroOne(2, a)
-	a = limitFullCircle(a)
-	b = limitFullCircle(b)
+	if math.Abs(a) >= 180 {
+		a = limitValue(a, 180)
+	}
+
+	if math.Abs(b) >= 180 {
+		b = limitValue(b, 180)
+	}
+
 	c := b - a
 	d1 := d + n*(a+b+c*n)/2
-	return limitDegrees(d1)
+	return limitValue(d1, 360)
 }

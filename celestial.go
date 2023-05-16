@@ -42,7 +42,8 @@ func getCelestialTransit(args celestialArgs, approx float64) time.Time {
 	// Calculate at most 5 iterations
 	for i := 1; i <= 5; i++ {
 		// Calculate the sidereal time at Greenwich, in degrees, for the transit
-		nu := limitDegrees(args.today.ApparentSiderealTime + 360.985647*approx)
+		nu := args.today.ApparentSiderealTime + 360.985647*approx
+		nu = limitValue(nu, 360)
 
 		// Interpolate right ascension α` (in degrees)
 		n := approx + args.deltaT/86400
@@ -87,12 +88,13 @@ func getCelestialAtElevation(args celestialArgs, approxTransit, celestialElevati
 	} else {
 		approx += H / 360
 	}
-	approx = limitZeroOne(approx)
+	approx = limitValue(approx, 1)
 
 	// Calculate at most 5 iterations
 	for i := 1; i <= 5; i++ {
 		// Calculate the sidereal time at Greenwich, in degrees
-		nu := limitDegrees(args.today.ApparentSiderealTime + 360.985647*approx)
+		nu := args.today.ApparentSiderealTime + 360.985647*approx
+		nu = limitValue(nu, 360)
 
 		// Interpolate right ascension and declination (α` δ` in degrees)
 		n := approx + args.deltaT/86400

@@ -13,40 +13,25 @@ func degToRad(deg float64) float64 {
 	return deg * math.Pi / 180
 }
 
-func limitDegrees(deg float64) float64 {
-	return limitValues(360, deg)
-}
+func limitValue(value, limit float64) float64 {
+	f := value / limit
+	f = math.Abs(f - math.Trunc(f))
 
-func limitValues(max, val float64) float64 {
-	f := val / max
-	val = val - math.Trunc(f)*max
-	if val < 0 {
-		val = max + val
+	switch {
+	case value > 0:
+		return limit * f
+	case value < 0:
+		return limit - limit*f
+	default:
+		return value
 	}
-	return val
-}
-
-func limitZeroOne(val float64) float64 {
-	val = val - math.Trunc(val)
-	if val < 0 {
-		val += 1
-	}
-	return val
-}
-
-func limitFullCircle(val float64) float64 {
-	if int(math.Round(math.Abs(val)/360)) >= 1 {
-		val = limitDegrees(val)
-	}
-	return val
 }
 
 func limit180Degrees(val float64) float64 {
-	f := val / 360
-	val = val - math.Trunc(f)*360
-	if val < -180 {
+	val = limitValue(val, 360)
+	if val <= -180 {
 		val += 360
-	} else if val > 180 {
+	} else if val >= 180 {
 		val -= 360
 	}
 	return val

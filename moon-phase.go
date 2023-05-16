@@ -67,25 +67,25 @@ func getMoonPhaseTime(phase _MoonPhase, baseK float64, tz *time.Location, opts *
 	M := 2.5534 + 29.1053567*k -
 		0.0000014*math.Pow(T, 2) -
 		0.00000011*math.Pow(T, 3)
-	M = degToRad(limitDegrees(M))
+	M = degToRad(limitValue(M, 360))
 
 	// Calculate Moon's mean anomaly (M' in degrees, convert to rad)
 	MPrime := 201.5643 + 385.81693528*k +
 		0.0107582*math.Pow(T, 2) +
 		0.00001238*math.Pow(T, 3) -
 		0.000000058*math.Pow(T, 4)
-	MPrime = degToRad(limitDegrees(MPrime))
+	MPrime = degToRad(limitValue(MPrime, 360))
 
 	// Calculate Moon's argument of latitude (F in degrees, convert to rad)
 	F := 160.7108 + 390.67050284*k -
 		0.0016118*math.Pow(T, 2) -
 		0.00000227*math.Pow(T, 3) +
 		0.000000011*math.Pow(T, 4)
-	F = degToRad(limitDegrees(F))
+	F = degToRad(limitValue(F, 360))
 
 	// Calculate longitude of ascending node of the lunar orbit (Ω in degrees, convert to rad)
 	omega := 124.7746 - 1.56375588*k + 0.0020672*math.Pow(T, 2) + 0.00000215*math.Pow(T, 3)
-	omega = degToRad(limitDegrees(omega))
+	omega = degToRad(limitValue(omega, 360))
 
 	// Calculate planetary arguments (degrees, convert to rad)
 	A1 := degToRad(299.77 + 0.107408*k - 0.009173*math.Pow(T, 2))

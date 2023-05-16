@@ -100,7 +100,7 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonPosition, e
 	// 7. Calculate the Apparent Sidereal Time at Greenwich at any given time, ν (in degrees)
 	nu0 := getMeanSiderealTime(JD, JC)
 	nu := getApparentSiderealTime(deltaPsi, epsilon, nu0)
-	nu = limitDegrees(nu)
+	nu = limitValue(nu, 360)
 
 	// 8. Calculate the Moon's Geocentric Right Ascension, α (in degrees)
 	alpha := getGeocentricRightAscension(beta, epsilon, lambda)
@@ -210,7 +210,7 @@ func GetMoonEvents(date time.Time, loc Location, opts *Options, customEvents ...
 	// Calculate the approximate moon transit time, st0, in fraction of day
 	// Limit it to value between 0 and 1
 	st0 := (today.GeocentricRightAscension - loc.Longitude - today.ApparentSiderealTime) / 360
-	st0 = limitZeroOne(st0)
+	st0 = limitValue(st0, 1)
 
 	// Calculate transit time
 	mt := getCelestialTransit(args, st0)
@@ -255,23 +255,18 @@ func GetMoonEvents(date time.Time, loc Location, opts *Options, customEvents ...
 func getMoonGeocentricPosition(JCE float64) (float64, float64, float64) {
 	// Calculate the Moon's Mean Longitude, L' (in degrees)
 	LPrime := polynomial(JCE, 218.3164477, 481267.88123421, -0.0015786, 1/538841.0, -1/65194000.0)
-	LPrime = limitDegrees(LPrime)
 
 	// Calculate the Mean Elongation of the Moon, D (in degrees)
 	D := polynomial(JCE, 297.8501921, 445267.1114034, -0.0018819, 1/545868.0, -1/113065000.0)
-	D = limitDegrees(D)
 
 	// Calculate the Sun's Mean Anomaly, M (in degrees)
 	M := polynomial(JCE, 357.5291092, 35999.0502909, -0.0001536, 1/24490000.0)
-	M = limitDegrees(M)
 
 	// Calculate the Moon's Mean Anomaly, M' (in degrees)
 	MPrime := polynomial(JCE, 134.9633964, 477198.8675055, 0.0087414, 1/69699.0, -1/14712000.0)
-	MPrime = limitDegrees(MPrime)
 
 	// Calculate the Moon's Argument of Latitude, F (in degrees)
 	F := polynomial(JCE, 93.2720950, 483202.0175233, -0.0036539, -1/3526000.0, 1/863310000.0)
-	F = limitDegrees(F)
 
 	// Calculate term l (in 0.000001 degrees), r (in 0.001 kilometers), and
 	// b (in 0.000001 degrees)
@@ -279,9 +274,9 @@ func getMoonGeocentricPosition(JCE float64) (float64, float64, float64) {
 	l, r, b := getMoonPeriodicTermSum(E, D, M, MPrime, F)
 
 	// Calculate term a
-	a1 := limitDegrees(119.75 + 131.849*JCE)
-	a2 := limitDegrees(53.09 + 479264.29*JCE)
-	a3 := limitDegrees(313.45 + 481266.484*JCE)
+	a1 := 119.75 + 131.849*JCE
+	a2 := 53.09 + 479264.29*JCE
+	a3 := 313.45 + 481266.484*JCE
 
 	// Calculate term Δl and Δb
 	deltal := 3958*math.Sin(degToRad(a1)) +
@@ -297,11 +292,11 @@ func getMoonGeocentricPosition(JCE float64) (float64, float64, float64) {
 
 	// Calculate the Moon's Longitude, λ' (in degrees), then limit it to 0 and 360
 	lambdaPrime := LPrime + (l+deltal)/1_000_000
-	lambdaPrime = limitDegrees(lambdaPrime)
+	lambdaPrime = limitValue(lambdaPrime, 360)
 
 	// Calculate the Moon's Latitude, β (in degrees), then limit it to 0 and 360
 	beta := (b + deltab) / 1_000_000
-	beta = limitDegrees(beta)
+	beta = limitValue(beta, 360)
 
 	// Calculate the Moon's Distance From the Center of Earth, Δ (in kilometers)
 	dDelta := 385000.56 + r/1000
@@ -374,7 +369,7 @@ func getMoonElongation(sun SunPosition, geoLat, geoLong float64) float64 {
 
 	psi := math.Acos(math.Cos(moonGeoLat) * math.Cos(moonGeoLong-sunGeoLong))
 	psi = radToDeg(psi)
-	psi = limit180Degrees(psi)
+	psi = limitValue(psi, 180)
 	return psi
 }
 
@@ -382,7 +377,7 @@ func getMoonIllumination(sun SunPosition, psi float64, geoDistance float64) floa
 	psiRad := degToRad(psi)
 	R := sun.EarthRadiusVector * 149597870.700
 	PA := math.Atan((R * math.Sin(psiRad)) / (geoDistance - R*math.Cos(psiRad)))
-	PA = limitValues(math.Pi, PA)
+	PA = limitValue(PA, math.Pi)
 	k := (1 + math.Cos(PA)) / 2
 	return k
 }
