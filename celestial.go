@@ -38,7 +38,7 @@ func toCelestial(data interface{}) celestialPosition {
 	return celestialPosition{}
 }
 
-func getCelestialTransit(args celestialArgs, approx float64) time.Time {
+func getCelestialTransit(args celestialArgs, approx float64) (float64, time.Time) {
 	// Calculate at most 5 iterations
 	for i := 1; i <= 5; i++ {
 		// Calculate the sidereal time at Greenwich, in degrees, for the transit
@@ -60,21 +60,25 @@ func getCelestialTransit(args celestialArgs, approx float64) time.Time {
 
 		// Calculate new approximate transit time in fraction of day
 		newApprox := approx - HPrime/360
+
+		// If the new approximation is similar with the previous, stop
 		if fractionDiff(approx, newApprox) == 0 {
 			break
 		}
+
 		approx = newApprox
 	}
 
+	// Make sure the transit occured within the day, not next nor previous day
 	T := approx
 	if T > 1 || T < 0 {
-		return time.Time{}
+		return 0, time.Time{}
 	}
 
-	return dayFractionToTime(args.date, T)
+	return T, dayFractionToTime(args.date, T)
 }
 
-func getCelestialAtElevation(args celestialArgs, approxTransit, celestialElevation float64, beforeTransit bool) time.Time {
+func getCelestialAtElevation(args celestialArgs, transit, celestialElevation float64, isBeforeTransit bool) time.Time {
 	// Calculate the approximate local hour angle
 	H := getLocalHourAngle(celestialElevation, args.location.Latitude, args.today.GeocentricDeclination)
 	if math.IsNaN(H) {
@@ -82,13 +86,17 @@ func getCelestialAtElevation(args celestialArgs, approxTransit, celestialElevati
 	}
 
 	// Calculate the approximate time in fraction of day
-	approx := approxTransit
-	if beforeTransit {
+	approx := transit
+	if isBeforeTransit {
 		approx -= H / 360
 	} else {
 		approx += H / 360
 	}
-	approx = limitValue(approx, 1)
+
+	// TODO: in original paper, the approximate time must be limited to 0 and 1.
+	// However, there are case where the event occured in next or previous day,
+	// so here we don't limit it.
+	// approx = limitValue(approx, 1)
 
 	// Calculate at most 5 iterations
 	for i := 1; i <= 5; i++ {
@@ -124,16 +132,19 @@ func getCelestialAtElevation(args celestialArgs, approxTransit, celestialElevati
 		// Calculate the new approximate time in fraction of day
 		newApprox := approx + ((h - celestialElevation) /
 			(360 * math.Cos(deltaPrimeRad) * math.Cos(latitudeRad) * math.Sin(HPrimeRad)))
+
+		// Make sure the new approximation is correctly ordered related to transit
+		if (isBeforeTransit && newApprox > transit) || (!isBeforeTransit && newApprox < transit) {
+			break
+		}
+
+		// If the new approximation is similar with the previous, stop
 		if fractionDiff(approx, newApprox) == 0 {
 			break
 		}
+
 		approx = newApprox
 	}
 
-	T := approx
-	if T > 1 || T < 0 {
-		return time.Time{}
-	}
-
-	return dayFractionToTime(args.date, T)
+	return dayFractionToTime(args.date, approx)
 }

@@ -212,20 +212,25 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 	st0 = limitValue(st0, 1)
 
 	// Calculate transit time
-	st := getCelestialTransit(args, st0)
+	stFraction, st := getCelestialTransit(args, st0)
 	stData, err := GetSunPosition(st, loc, opts)
 	if err != nil {
 		return SunEvents{}, fmt.Errorf("sun transit error: %v", err)
 	}
 
+	// If transit not happened that day, we can stop because other events depend on the transit
+	if st.IsZero() {
+		return SunEvents{}, nil
+	}
+
 	// Calculate sunrise and sunset
-	sr := getCelestialAtElevation(args, st0, h0, true)
+	sr := getCelestialAtElevation(args, stFraction, h0, true)
 	srData, err := GetSunPosition(sr, loc, opts)
 	if err != nil {
 		return SunEvents{}, fmt.Errorf("sunrise error: %v", err)
 	}
 
-	ss := getCelestialAtElevation(args, st0, h0, false)
+	ss := getCelestialAtElevation(args, stFraction, h0, false)
 	ssData, err := GetSunPosition(ss, loc, opts)
 	if err != nil {
 		return SunEvents{}, fmt.Errorf("sunset error: %v", err)
@@ -234,7 +239,7 @@ func GetSunEvents(date time.Time, loc Location, opts *Options, customEvents ...C
 	// Calculate other events
 	otherEvents := map[string]SunPosition{}
 	for _, e := range customEvents {
-		et := getCelestialAtElevation(args, st0, e.Elevation(today), e.BeforeTransit)
+		et := getCelestialAtElevation(args, stFraction, e.Elevation(today), e.BeforeTransit)
 		eData, err := GetSunPosition(et, loc, opts)
 		if err != nil {
 			return SunEvents{}, fmt.Errorf("event \"%s\" error: %v", e.Name, err)

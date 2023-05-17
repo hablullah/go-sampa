@@ -207,27 +207,32 @@ func GetMoonEvents(date time.Time, loc Location, opts *Options, customEvents ...
 		tomorrow:  toCelestial(tomorrow),
 	}
 
-	// Calculate the approximate moon transit time, st0, in fraction of day
+	// Calculate the approximate moon transit time, mt0, in fraction of day
 	// Limit it to value between 0 and 1
-	st0 := (today.GeocentricRightAscension - loc.Longitude - today.ApparentSiderealTime) / 360
-	st0 = limitValue(st0, 1)
+	mt0 := (today.GeocentricRightAscension - loc.Longitude - today.ApparentSiderealTime) / 360
+	mt0 = limitValue(mt0, 1)
 
 	// Calculate transit time
-	mt := getCelestialTransit(args, st0)
+	mtFraction, mt := getCelestialTransit(args, mt0)
 	mtData, err := GetMoonPosition(mt, loc, opts)
 	if err != nil {
 		return MoonEvents{}, fmt.Errorf("moon transit error: %v", err)
 	}
 
+	// If transit not happened that day, we can stop because other events depend on the transit
+	if mt.IsZero() {
+		return MoonEvents{}, nil
+	}
+
 	// Calculate moonrise
-	mr := getCelestialAtElevation(args, st0, h0, true)
+	mr := getCelestialAtElevation(args, mtFraction, h0, true)
 	mrData, err := GetMoonPosition(mr, loc, opts)
 	if err != nil {
 		return MoonEvents{}, fmt.Errorf("moonrise error: %v", err)
 	}
 
 	// Calculate moonset
-	ms := getCelestialAtElevation(args, st0, h0, false)
+	ms := getCelestialAtElevation(args, mtFraction, h0, false)
 	msData, err := GetMoonPosition(ms, loc, opts)
 	if err != nil {
 		return MoonEvents{}, fmt.Errorf("moonset error: %v", err)
@@ -236,7 +241,7 @@ func GetMoonEvents(date time.Time, loc Location, opts *Options, customEvents ...
 	// Calculate other events
 	otherEvents := map[string]MoonPosition{}
 	for _, e := range customEvents {
-		et := getCelestialAtElevation(args, st0, e.Elevation(today), e.BeforeTransit)
+		et := getCelestialAtElevation(args, mtFraction, e.Elevation(today), e.BeforeTransit)
 		eData, err := GetMoonPosition(et, loc, opts)
 		if err != nil {
 			return MoonEvents{}, fmt.Errorf("event \"%s\" error: %v", e.Name, err)
