@@ -47,7 +47,7 @@ func parseSunCSV(srcPath string, tz *time.Location) ([]SunSchedule, error) {
 		}
 
 		// Skip empty record
-		if len(record) != 20 {
+		if len(record) != 19 {
 			continue
 		}
 
@@ -66,11 +66,11 @@ func parseSunCSV(srcPath string, tz *time.Location) ([]SunSchedule, error) {
 		// Get record data
 		strDate := record[0]
 		date, _ := parseDate(strDate, tz)
-		dawn, _ := parseTime(strDate, record[2], tz)
-		dusk, _ := parseTime(strDate, record[3], tz)
-		sunrise, _ := parseTime(strDate, record[8], tz)
-		sunset, _ := parseTime(strDate, record[9], tz)
-		transit, _ := parseTime(strDate, record[17], tz)
+		dawn, _ := parseTime(strDate, record[1], tz)
+		dusk, _ := parseTime(strDate, record[2], tz)
+		sunrise, _ := parseTime(strDate, record[7], tz)
+		sunset, _ := parseTime(strDate, record[8], tz)
+		transit, _ := parseTime(strDate, record[16], tz)
 
 		// Prepare index for saving schedule
 		idx := date.YearDay() - 1
@@ -138,7 +138,7 @@ func parseMoonCSV(srcPath string, tz *time.Location) ([]MoonSchedule, error) {
 		}
 
 		// Skip empty record
-		if len(record) != 13 {
+		if len(record) != 12 {
 			continue
 		}
 
@@ -157,9 +157,9 @@ func parseMoonCSV(srcPath string, tz *time.Location) ([]MoonSchedule, error) {
 		// Get record data
 		strDate := record[0]
 		date, _ := parseDate(strDate, tz)
-		moonrise, _ := parseTime(strDate, record[2], tz)
-		moonset, _ := parseTime(strDate, record[3], tz)
-		transit, _ := parseTime(strDate, record[6], tz)
+		moonrise, _ := parseTime(strDate, record[1], tz)
+		moonset, _ := parseTime(strDate, record[2], tz)
+		transit, _ := parseTime(strDate, record[5], tz)
 
 		// Prepare index for saving schedule
 		idx := date.YearDay() - 1
