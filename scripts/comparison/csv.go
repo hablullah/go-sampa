@@ -4,16 +4,26 @@ import (
 	"encoding/csv"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
-type SunSchedule struct {
+type SunData struct {
 	Date    string
-	Dawn    time.Time
+	Dawn18  time.Time
+	Dawn12  time.Time
+	Dawn6   time.Time
 	Sunrise time.Time
 	Transit time.Time
 	Sunset  time.Time
-	Dusk    time.Time
+	Dusk6   time.Time
+	Dusk12  time.Time
+	Dusk18  time.Time
+
+	SunriseAzimuth  float64
+	SunsetAzimuth   float64
+	TransitAltitude float64
 }
 
 type MoonSchedule struct {
@@ -21,9 +31,14 @@ type MoonSchedule struct {
 	Moonrise time.Time
 	Transit  time.Time
 	Moonset  time.Time
+
+	MoonriseAzimuth float64
+	MoonsetAzimuth  float64
+	TransitAltitude float64
+	Illumination    float64
 }
 
-func parseSunCSV(srcPath string, tz *time.Location) ([]SunSchedule, error) {
+func parseSunCSV(srcPath string, tz *time.Location) ([]SunData, error) {
 	// Open file
 	f, err := os.Open(srcPath)
 	if err != nil {
@@ -61,38 +76,71 @@ func parseSunCSV(srcPath string, tz *time.Location) ([]SunSchedule, error) {
 	}
 
 	// Convert records to schedules
-	schedules := make([]SunSchedule, nDays)
+	schedules := make([]SunData, nDays)
 	for _, record := range records {
 		// Get record data
 		strDate := record[0]
 		date, _ := parseDate(strDate, tz)
-		dawn, _ := parseTime(strDate, record[1], tz)
-		dusk, _ := parseTime(strDate, record[2], tz)
+		dawn18, _ := parseTime(strDate, record[1], tz)
+		dusk18, _ := parseTime(strDate, record[2], tz)
+		dawn12, _ := parseTime(strDate, record[3], tz)
+		dusk12, _ := parseTime(strDate, record[4], tz)
+		dawn6, _ := parseTime(strDate, record[5], tz)
+		dusk6, _ := parseTime(strDate, record[6], tz)
 		sunrise, _ := parseTime(strDate, record[7], tz)
 		sunset, _ := parseTime(strDate, record[8], tz)
 		transit, _ := parseTime(strDate, record[16], tz)
+		sunriseAzimuth, _ := parseFloat(record[9])
+		sunsetAzimuth, _ := parseFloat(record[10])
+		transitAltitude, _ := parseFloat(record[17])
 
 		// Prepare index for saving schedule
 		idx := date.YearDay() - 1
-		if transit.IsZero() {
-			transit = schedules[idx].Transit
-		}
 
 		// Save the schedule
 		schedules[idx].Date = strDate
 		schedules[idx].Transit = transit
+		schedules[idx].TransitAltitude = transitAltitude
 
-		if !dawn.IsZero() {
-			dawnIdx := prepareTimeIndex(idx, dawn, transit, true)
-			if dawnIdx >= 0 && dawnIdx < nDays {
-				schedules[dawnIdx].Dawn = dawn
+		if !dawn18.IsZero() {
+			newIdx := prepareTimeIndex(idx, dawn18, transit, true)
+			if newIdx >= 0 && newIdx < nDays {
+				schedules[newIdx].Dawn18 = dawn18
 			}
 		}
 
-		if !dusk.IsZero() {
-			duskIdx := prepareTimeIndex(idx, dusk, transit, false)
-			if duskIdx >= 0 && duskIdx < nDays {
-				schedules[duskIdx].Dusk = dusk
+		if !dusk18.IsZero() {
+			newIdx := prepareTimeIndex(idx, dusk18, transit, false)
+			if newIdx >= 0 && newIdx < nDays {
+				schedules[newIdx].Dusk18 = dusk18
+			}
+		}
+
+		if !dawn12.IsZero() {
+			newIdx := prepareTimeIndex(idx, dawn12, transit, true)
+			if newIdx >= 0 && newIdx < nDays {
+				schedules[newIdx].Dawn12 = dawn12
+			}
+		}
+
+		if !dusk12.IsZero() {
+			newIdx := prepareTimeIndex(idx, dusk12, transit, false)
+			if newIdx >= 0 && newIdx < nDays {
+				schedules[newIdx].Dusk12 = dusk12
+			}
+		}
+
+		if !dawn6.IsZero() {
+			newIdx := prepareTimeIndex(idx, dawn6, transit, true)
+			if newIdx >= 0 && newIdx < nDays {
+				schedules[newIdx].Dawn6 = dawn6
+			}
+		}
+
+		if !dusk6.IsZero() {
+			newIdx := prepareTimeIndex(idx, dusk6, transit, false)
+			if newIdx >= 0 && newIdx < nDays {
+				schedules[newIdx].Dusk6 = dusk6
 			}
 		}
 
@@ -100,6 +148,7 @@ func parseSunCSV(srcPath string, tz *time.Location) ([]SunSchedule, error) {
 			sunriseIdx := prepareTimeIndex(idx, sunrise, transit, true)
 			if sunriseIdx >= 0 && sunriseIdx < nDays {
 				schedules[sunriseIdx].Sunrise = sunrise
+				schedules[sunriseIdx].SunriseAzimuth = sunriseAzimuth
 			}
 		}
 
@@ -107,6 +156,7 @@ func parseSunCSV(srcPath string, tz *time.Location) ([]SunSchedule, error) {
 			sunsetIdx := prepareTimeIndex(idx, sunset, transit, false)
 			if sunsetIdx >= 0 && sunsetIdx < nDays {
 				schedules[sunsetIdx].Sunset = sunset
+				schedules[sunsetIdx].SunsetAzimuth = sunsetAzimuth
 			}
 		}
 	}
@@ -160,6 +210,10 @@ func parseMoonCSV(srcPath string, tz *time.Location) ([]MoonSchedule, error) {
 		moonrise, _ := parseTime(strDate, record[1], tz)
 		moonset, _ := parseTime(strDate, record[2], tz)
 		transit, _ := parseTime(strDate, record[5], tz)
+		moonriseAzimuth, _ := parseFloat(record[3])
+		moonsetAzimuth, _ := parseFloat(record[4])
+		transitAltitude, _ := parseFloat(record[6])
+		illumination, _ := parseFloat(strings.TrimSuffix(record[8], "%"))
 
 		// Prepare index for saving schedule
 		idx := date.YearDay() - 1
@@ -170,11 +224,14 @@ func parseMoonCSV(srcPath string, tz *time.Location) ([]MoonSchedule, error) {
 		// Save the schedule
 		schedules[idx].Date = strDate
 		schedules[idx].Transit = transit
+		schedules[idx].TransitAltitude = transitAltitude
+		schedules[idx].Illumination = illumination
 
 		if !moonrise.IsZero() {
 			moonriseIdx := prepareTimeIndex(idx, moonrise, transit, true)
 			if moonriseIdx >= 0 && moonriseIdx < nDays {
 				schedules[moonriseIdx].Moonrise = moonrise
+				schedules[moonriseIdx].MoonriseAzimuth = moonriseAzimuth
 			}
 		}
 
@@ -182,6 +239,7 @@ func parseMoonCSV(srcPath string, tz *time.Location) ([]MoonSchedule, error) {
 			moonsetIdx := prepareTimeIndex(idx, moonset, transit, false)
 			if moonsetIdx >= 0 && moonsetIdx < nDays {
 				schedules[moonsetIdx].Moonset = moonset
+				schedules[moonsetIdx].MoonsetAzimuth = moonsetAzimuth
 			}
 		}
 	}
@@ -214,4 +272,8 @@ func parseDate(s string, tz *time.Location) (time.Time, error) {
 func parseTime(strDate, strTime string, tz *time.Location) (time.Time, error) {
 	str := strDate + " " + strTime
 	return time.ParseInLocation("2006-01-02 15:04:05", str, tz)
+}
+
+func parseFloat(s string) (float64, error) {
+	return strconv.ParseFloat(s, 64)
 }

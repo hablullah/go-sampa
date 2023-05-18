@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"strings"
 	"time"
 
 	"github.com/hablullah/go-sampa"
@@ -27,11 +26,18 @@ func compareSunSchedules(location Location) error {
 	}
 
 	// Compare schedules
-	var dawnDiffs []int
+	var dawn18Diffs []int
+	var dawn12Diffs []int
+	var dawn6Diffs []int
 	var sunriseDiffs []int
 	var transitDiffs []int
 	var sunsetDiffs []int
-	var duskDiffs []int
+	var dusk6Diffs []int
+	var dusk12Diffs []int
+	var dusk18Diffs []int
+	var sunriseAzimuthDiffs []float64
+	var sunsetAzimuthDiffs []float64
+	var transitAltitudeDiffs []float64
 
 	dawnTitle := location.Name + ", dawn"
 	sunriseTitle := location.Name + ", sunrise"
@@ -41,26 +47,48 @@ func compareSunSchedules(location Location) error {
 
 	for i, exp := range expectedSchedules {
 		res := calculatedSchedules[i]
-		dawnDiff := compareTime(dawnTitle, res.Date, exp.Dawn, res.Dawn)
+		dawn18Diff := compareTime(dawnTitle, res.Date, exp.Dawn18, res.Dawn18)
+		dawn12Diff := compareTime(dawnTitle, res.Date, exp.Dawn12, res.Dawn12)
+		dawn6Diff := compareTime(dawnTitle, res.Date, exp.Dawn6, res.Dawn6)
 		sunriseDiff := compareTime(sunriseTitle, res.Date, exp.Sunrise, res.Sunrise)
 		transitDiff := compareTime(transitTitle, res.Date, exp.Transit, res.Transit)
 		sunsetDiff := compareTime(sunsetTitle, res.Date, exp.Sunset, res.Sunset)
-		duskDiff := compareTime(duskTitle, res.Date, exp.Dusk, res.Dusk)
+		dusk6Diff := compareTime(duskTitle, res.Date, exp.Dusk6, res.Dusk6)
+		dusk12Diff := compareTime(duskTitle, res.Date, exp.Dusk12, res.Dusk12)
+		dusk18Diff := compareTime(duskTitle, res.Date, exp.Dusk18, res.Dusk18)
+		sunriseAzimuthDiff := math.Abs(res.SunriseAzimuth - exp.SunriseAzimuth)
+		sunsetAzimuthDiff := math.Abs(res.SunsetAzimuth - exp.SunsetAzimuth)
+		transitAltitudeDiff := math.Abs(res.TransitAltitude - exp.TransitAltitude)
 
-		dawnDiffs = append(dawnDiffs, dawnDiff)
+		dawn18Diffs = append(dawn18Diffs, dawn18Diff)
+		dawn12Diffs = append(dawn12Diffs, dawn12Diff)
+		dawn6Diffs = append(dawn6Diffs, dawn6Diff)
 		sunriseDiffs = append(sunriseDiffs, sunriseDiff)
 		transitDiffs = append(transitDiffs, transitDiff)
 		sunsetDiffs = append(sunsetDiffs, sunsetDiff)
-		duskDiffs = append(duskDiffs, duskDiff)
+		dusk6Diffs = append(dusk6Diffs, dusk6Diff)
+		dusk12Diffs = append(dusk12Diffs, dusk12Diff)
+		dusk18Diffs = append(dusk18Diffs, dusk18Diff)
+		sunriseAzimuthDiffs = append(sunriseAzimuthDiffs, sunriseAzimuthDiff)
+		sunsetAzimuthDiffs = append(sunsetAzimuthDiffs, sunsetAzimuthDiff)
+		transitAltitudeDiffs = append(transitAltitudeDiffs, transitAltitudeDiff)
 	}
 
 	// Print diff stat
-	fmt.Println("Sun event in", location.Name)
-	printDiff("- Dawn   ", dawnDiffs)
-	printDiff("- Sunrise", sunriseDiffs)
-	printDiff("- Transit", transitDiffs)
-	printDiff("- Sunset ", sunsetDiffs)
-	printDiff("- Dusk   ", duskDiffs)
+	fmt.Printf("Sun event in **%s**\n\n", location.Name)
+	printTimeDiff("- Dawn 18", dawn18Diffs)
+	printTimeDiff("- Dawn 12", dawn12Diffs)
+	printTimeDiff("- Dawn 6 ", dawn6Diffs)
+	printTimeDiff("- Sunrise", sunriseDiffs)
+	printTimeDiff("- Transit", transitDiffs)
+	printTimeDiff("- Sunset ", sunsetDiffs)
+	printTimeDiff("- Dusk 6 ", dusk6Diffs)
+	printTimeDiff("- Dusk 12", dusk12Diffs)
+	printTimeDiff("- Dusk 18", dusk18Diffs)
+	printFloatDiff("- Sunrise azimuth ", sunriseAzimuthDiffs)
+	printFloatDiff("- Sunset azimuth  ", sunsetAzimuthDiffs)
+	printFloatDiff("- Transit altitude", transitAltitudeDiffs)
+	fmt.Println()
 	return nil
 }
 
@@ -84,6 +112,10 @@ func compareMoonSchedules(location Location) error {
 	var moonriseDiffs []int
 	var transitDiffs []int
 	var moonsetDiffs []int
+	var moonriseAzimuthDiffs []float64
+	var moonsetAzimuthDiffs []float64
+	var transitAltitudeDiffs []float64
+	var illuminationDiffs []float64
 
 	moonriseTitle := location.Name + ", moonrise"
 	transitTitle := location.Name + ", transit"
@@ -94,17 +126,30 @@ func compareMoonSchedules(location Location) error {
 		moonriseDiff := compareTime(moonriseTitle, res.Date, exp.Moonrise, res.Moonrise)
 		transitDiff := compareTime(transitTitle, res.Date, exp.Transit, res.Transit)
 		moonsetDiff := compareTime(moonsetTitle, res.Date, exp.Moonset, res.Moonset)
+		moonriseAzimuthDiff := math.Abs(res.MoonriseAzimuth - exp.MoonriseAzimuth)
+		moonsetAzimuthDiff := math.Abs(res.MoonsetAzimuth - exp.MoonsetAzimuth)
+		transitAltitudeDiff := math.Abs(res.TransitAltitude - exp.TransitAltitude)
+		illuminationDiff := math.Abs(res.Illumination - exp.Illumination)
 
 		moonriseDiffs = append(moonriseDiffs, moonriseDiff)
 		transitDiffs = append(transitDiffs, transitDiff)
 		moonsetDiffs = append(moonsetDiffs, moonsetDiff)
+		moonriseAzimuthDiffs = append(moonriseAzimuthDiffs, moonriseAzimuthDiff)
+		moonsetAzimuthDiffs = append(moonsetAzimuthDiffs, moonsetAzimuthDiff)
+		transitAltitudeDiffs = append(transitAltitudeDiffs, transitAltitudeDiff)
+		illuminationDiffs = append(illuminationDiffs, illuminationDiff)
 	}
 
 	// Print diff stat
-	fmt.Println("Moon event in", location.Name)
-	printDiff("- Moonrise", moonriseDiffs)
-	printDiff("- Transit ", transitDiffs)
-	printDiff("- Moonset ", moonsetDiffs)
+	fmt.Printf("Moon event in **%s**\n\n", location.Name)
+	printTimeDiff("- Moonrise", moonriseDiffs)
+	printTimeDiff("- Transit ", transitDiffs)
+	printTimeDiff("- Moonset ", moonsetDiffs)
+	printFloatDiff("- Moonrise azimuth", moonriseAzimuthDiffs)
+	printFloatDiff("- Moonset azimuth ", moonsetAzimuthDiffs)
+	printFloatDiff("- Transit altitude", transitAltitudeDiffs)
+	printFloatDiff("- Illumination    ", illuminationDiffs)
+	fmt.Println()
 	return nil
 }
 
@@ -147,15 +192,15 @@ func compareTime(logTitle, date string, expected, result time.Time) int {
 	return diff
 }
 
-func diffStat(diffs []int) (max int, mode int, avg float64) {
+func diffStat[T int | float64](diffs []T) (max T, mode T, avg float64) {
 	nDiff := len(diffs)
 	if nDiff == 0 {
 		return
 	}
 
 	// Calculate various stat
-	var sum int
-	diffCount := make(map[int]int)
+	var sum T
+	diffCount := make(map[T]int)
 	for _, diff := range diffs {
 		sum += diff
 		diffCount[diff]++
@@ -179,14 +224,12 @@ func diffStat(diffs []int) (max int, mode int, avg float64) {
 	return
 }
 
-func printDiff(title string, diffs []int) {
+func printTimeDiff(title string, diffs []int) {
 	max, mode, avg := diffStat(diffs)
 	fmt.Printf("%s: diff max = %2ds, mode = %ds, avg = %.2fs\n", title, max, mode, avg)
 }
 
-func strTime(t time.Time) string {
-	if t.IsZero() {
-		return strings.Repeat(" ", 19)
-	}
-	return t.Format("2006-01-02 15:04:05")
+func printFloatDiff(title string, diffs []float64) {
+	max, mode, avg := diffStat(diffs)
+	fmt.Printf("%s: diff max = %2.2f, mode = %.2f, avg = %.2f\n", title, max, mode, avg)
 }
