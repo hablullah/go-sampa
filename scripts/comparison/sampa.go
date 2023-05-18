@@ -43,3 +43,29 @@ func calculateSunEvents(location sampa.Location, tz *time.Location) ([]SunSchedu
 
 	return schedules, nil
 }
+
+func calculateMoonEvents(location sampa.Location, tz *time.Location) ([]MoonSchedule, error) {
+	start := time.Date(year, 1, 1, 0, 0, 0, 0, tz)
+	limit := start.AddDate(1, 0, 0)
+	nDays := int(limit.Sub(start).Hours() / 24)
+	schedules := make([]MoonSchedule, nDays)
+
+	var idx int
+	for dt := start; dt.Before(limit); dt = dt.AddDate(0, 0, 1) {
+		e, err := sampa.GetMoonEvents(dt, location, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		schedules[idx] = MoonSchedule{
+			Date:     dt.Format("2006-01-02"),
+			Moonrise: e.Moonrise.DateTime,
+			Transit:  e.Transit.DateTime,
+			Moonset:  e.Moonset.DateTime,
+		}
+
+		idx++
+	}
+
+	return schedules, nil
+}

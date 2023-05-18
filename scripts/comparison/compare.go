@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/hablullah/go-sampa"
@@ -60,6 +61,50 @@ func compareSunSchedules(location Location) error {
 	printDiff("- Transit", transitDiffs)
 	printDiff("- Sunset ", sunsetDiffs)
 	printDiff("- Dusk   ", duskDiffs)
+	return nil
+}
+
+func compareMoonSchedules(location Location) error {
+	// Prepare expected schedules from CSV file
+	expectedSchedules, err := parseMoonCSV(location.CsvMoon, location.Timezone)
+	if err != nil {
+		return err
+	}
+
+	// Calculate schedules using SAMPA
+	calculatedSchedules, err := calculateMoonEvents(sampa.Location{
+		Latitude:  location.Latitude,
+		Longitude: location.Longitude,
+	}, location.Timezone)
+	if err != nil {
+		return err
+	}
+
+	// Compare schedules
+	var moonriseDiffs []int
+	var transitDiffs []int
+	var moonsetDiffs []int
+
+	moonriseTitle := location.Name + ", moonrise"
+	transitTitle := location.Name + ", transit"
+	moonsetTitle := location.Name + ", moonset"
+
+	for i, exp := range expectedSchedules {
+		res := calculatedSchedules[i]
+		moonriseDiff := compareTime(moonriseTitle, res.Date, exp.Moonrise, res.Moonrise)
+		transitDiff := compareTime(transitTitle, res.Date, exp.Transit, res.Transit)
+		moonsetDiff := compareTime(moonsetTitle, res.Date, exp.Moonset, res.Moonset)
+
+		moonriseDiffs = append(moonriseDiffs, moonriseDiff)
+		transitDiffs = append(transitDiffs, transitDiff)
+		moonsetDiffs = append(moonsetDiffs, moonsetDiff)
+	}
+
+	// Print diff stat
+	fmt.Println("Moon event in", location.Name)
+	printDiff("- Moonrise", moonriseDiffs)
+	printDiff("- Transit ", transitDiffs)
+	printDiff("- Moonset ", moonsetDiffs)
 	return nil
 }
 
@@ -137,4 +182,11 @@ func diffStat(diffs []int) (max int, mode int, avg float64) {
 func printDiff(title string, diffs []int) {
 	max, mode, avg := diffStat(diffs)
 	fmt.Printf("%s: diff max = %2ds, mode = %ds, avg = %.2fs\n", title, max, mode, avg)
+}
+
+func strTime(t time.Time) string {
+	if t.IsZero() {
+		return strings.Repeat(" ", 19)
+	}
+	return t.Format("2006-01-02 15:04:05")
 }

@@ -5,7 +5,7 @@ import "log"
 const (
 	year      = 2023
 	nDays     = 365
-	maxDiff   = 30
+	maxDiff   = 60
 	enableLog = false
 )
 
@@ -18,4 +18,11 @@ func main() {
 	compareSunSchedules(Oslo)
 	compareSunSchedules(Philipsburg)
 	compareSunSchedules(NewYork)
+
+	compareMoonSchedules(LordHoweIsland)
+	compareMoonSchedules(Maputo)
+	compareMoonSchedules(Amsterdam)
+	compareMoonSchedules(Oslo)
+	compareMoonSchedules(Philipsburg)
+	compareMoonSchedules(NewYork)
 }
