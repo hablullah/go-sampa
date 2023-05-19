@@ -35,6 +35,8 @@ type MoonPosition struct {
 	TopocentricAzimuthAngle      float64
 	Elongation                   float64
 	PercentIlluminated           float64
+	MoonSunAngle                 float64
+	Phase                        MoonPhase
 }
 
 // IsZero reports whether Moon position is empty or not.
@@ -124,7 +126,7 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonPosition, e
 	// 14. Calculate the topocentric azimuth angle (in degrees)
 	astroAzimuth, azimuth := getTopocentricAzimuthAngle(loc.Latitude, deltaPrime, HPrime)
 
-	// Calculate Moon elongation and illumination percentage
+	// Additional: Calculate Moon elongation and illumination percentage
 	sun, err := GetSunPosition(dt, loc, opts)
 	if err != nil {
 		return MoonPosition{}, fmt.Errorf("sun-moon position error: %w", err)
@@ -132,6 +134,35 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonPosition, e
 
 	E := getMoonElongation(sun, beta, lambdaPrime)
 	k := getMoonIllumination(sun, E, dDelta)
+
+	// Additional: calculate Moon phase
+	var phase MoonPhase
+	msa := limitValue(lambdaPrime-sun.GeocentricLongitude, 360)
+
+	hf := 15.0 / 2
+	newMoonStart, newMoonEnd := 360-hf, 0+hf
+	firstQuarterStart, firstQuarterEnd := 90-hf, 90+hf
+	fullMoonStart, fullMoonEnd := 180-hf, 180+hf
+	lastQuarterStart, lastQuarterEnd := 270-hf, 270+hf
+
+	switch {
+	case msa >= newMoonStart || msa <= newMoonEnd:
+		phase = NewMoon
+	case msa > newMoonEnd && msa < firstQuarterStart:
+		phase = WaxingCrescent
+	case msa >= firstQuarterStart && msa <= firstQuarterEnd:
+		phase = FirstQuarter
+	case msa > firstQuarterEnd && msa < fullMoonStart:
+		phase = WaxingGibbous
+	case msa >= fullMoonStart && msa <= fullMoonEnd:
+		phase = FullMoon
+	case msa > fullMoonEnd && msa < lastQuarterStart:
+		phase = WaningGibbous
+	case msa >= lastQuarterStart && msa <= lastQuarterEnd:
+		phase = LastQuarter
+	case msa > lastQuarterEnd && msa < newMoonStart:
+		phase = WaningCrescent
+	}
 
 	return MoonPosition{
 		DateTime:                     dt,
@@ -159,6 +190,8 @@ func GetMoonPosition(dt time.Time, loc Location, opts *Options) (MoonPosition, e
 		TopocentricAzimuthAngle:      azimuth,
 		Elongation:                   E,
 		PercentIlluminated:           k,
+		MoonSunAngle:                 msa,
+		Phase:                        phase,
 	}, nil
 }
 

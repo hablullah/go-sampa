@@ -7,6 +7,43 @@ import (
 	"github.com/hablullah/go-juliandays"
 )
 
+type MoonPhase uint8
+
+const (
+	NewMoon MoonPhase = iota + 1
+	WaxingCrescent
+	FirstQuarter
+	WaxingGibbous
+	FullMoon
+	WaningGibbous
+	LastQuarter
+	WaningCrescent
+	nextNewMoon
+)
+
+func (mp MoonPhase) String() string {
+	switch mp {
+	case NewMoon:
+		return "New Moon"
+	case WaxingCrescent:
+		return "Waxing Crescent"
+	case FirstQuarter:
+		return "First Quarter"
+	case WaxingGibbous:
+		return "Waxing Gibbous"
+	case FullMoon:
+		return "Full Moon"
+	case WaningGibbous:
+		return "Waning Gibbous"
+	case LastQuarter:
+		return "Last Quarter"
+	case WaningCrescent:
+		return "Waning Crescent"
+	default:
+		return ""
+	}
+}
+
 // MoonPhases is times when Moon reach its phases.
 type MoonPhases struct {
 	NewMoon      time.Time
@@ -34,11 +71,11 @@ func GetMoonPhases(dt time.Time, opts *Options) MoonPhases {
 
 	// Calculate time for each phases
 	tz := dt.Location()
-	newMoon := getMoonPhaseTime(_NewMoon, baseK, tz, opts)
-	firstQuarter := getMoonPhaseTime(_FirstQuarter, baseK, tz, opts)
-	fullMoon := getMoonPhaseTime(_FullMoon, baseK, tz, opts)
-	lastQuarter := getMoonPhaseTime(_LastQuarter, baseK, tz, opts)
-	nextNewMoon := getMoonPhaseTime(_NextNewMoon, baseK, tz, opts)
+	newMoon := getMoonPhaseTime(NewMoon, baseK, tz, opts)
+	firstQuarter := getMoonPhaseTime(FirstQuarter, baseK, tz, opts)
+	fullMoon := getMoonPhaseTime(FullMoon, baseK, tz, opts)
+	lastQuarter := getMoonPhaseTime(LastQuarter, baseK, tz, opts)
+	nextNewMoon := getMoonPhaseTime(nextNewMoon, baseK, tz, opts)
 
 	// Calculate month's length
 	monthLength := nextNewMoon.Sub(newMoon).Hours() / 24
@@ -53,9 +90,19 @@ func GetMoonPhases(dt time.Time, opts *Options) MoonPhases {
 	}
 }
 
-func getMoonPhaseTime(phase _MoonPhase, baseK float64, tz *time.Location, opts *Options) time.Time {
+func getMoonPhaseTime(phase MoonPhase, baseK float64, tz *time.Location, opts *Options) time.Time {
 	// Calculate k for the specified phase
-	k := baseK + float64(phase)*0.25
+	k := baseK
+	switch phase {
+	case FirstQuarter:
+		k += 0.25
+	case FullMoon:
+		k += 0.5
+	case LastQuarter:
+		k += 0.75
+	case nextNewMoon:
+		k += 1
+	}
 
 	// Calculate term T
 	T := k / 1236.85
@@ -132,9 +179,9 @@ func getMoonPhaseTime(phase _MoonPhase, baseK float64, tz *time.Location, opts *
 	return juliandays.ToTime(JD).In(tz)
 }
 
-func getPhaseCorrection(phase _MoonPhase, E, M, MPrime, F, omega float64) float64 {
+func getPhaseCorrection(phase MoonPhase, E, M, MPrime, F, omega float64) float64 {
 	switch phase {
-	case _NewMoon, _NextNewMoon:
+	case NewMoon, nextNewMoon:
 		return (-40720*math.Sin(MPrime) +
 			17241*E*math.Sin(M) +
 			1608*math.Sin(2*MPrime) +
@@ -160,7 +207,7 @@ func getPhaseCorrection(phase _MoonPhase, E, M, MPrime, F, omega float64) float6
 			2*math.Sin(MPrime-M-2*F) -
 			2*math.Sin(3*MPrime+M) +
 			2*math.Sin(4*MPrime)) / 100000
-	case _FullMoon:
+	case FullMoon:
 		return (-40614*math.Sin(MPrime) +
 			17302*E*math.Sin(M) +
 			1614*math.Sin(2*MPrime) +
@@ -186,7 +233,7 @@ func getPhaseCorrection(phase _MoonPhase, E, M, MPrime, F, omega float64) float6
 			2*math.Sin(MPrime-M-2*F) -
 			2*math.Sin(3*MPrime+M) +
 			2*math.Sin(4*MPrime)) / 100000
-	case _FirstQuarter, _LastQuarter:
+	case FirstQuarter, LastQuarter:
 		base := (-62801*math.Sin(MPrime) +
 			17172*E*math.Sin(M) -
 			1183*E*math.Sin(MPrime+M) +
@@ -218,7 +265,7 @@ func getPhaseCorrection(phase _MoonPhase, E, M, MPrime, F, omega float64) float6
 			2*math.Cos(MPrime-M) +
 			2*math.Cos(MPrime+M) +
 			2*math.Cos(2*F)) / 100000
-		if phase == _FirstQuarter {
+		if phase == FirstQuarter {
 			return base + W
 		} else {
 			return base - W
@@ -227,13 +274,3 @@ func getPhaseCorrection(phase _MoonPhase, E, M, MPrime, F, omega float64) float6
 
 	return 0
 }
-
-type _MoonPhase uint8
-
-const (
-	_NewMoon _MoonPhase = iota
-	_FirstQuarter
-	_FullMoon
-	_LastQuarter
-	_NextNewMoon
-)
