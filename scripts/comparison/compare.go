@@ -39,23 +39,27 @@ func compareSunSchedules(location Location) error {
 	var sunsetAzimuthDiffs []float64
 	var transitAltitudeDiffs []float64
 
-	dawnTitle := location.Name + ", dawn"
+	dawn18Title := location.Name + ", dawn18"
+	dawn12Title := location.Name + ", dawn12"
+	dawn6Title := location.Name + ", dawn6"
 	sunriseTitle := location.Name + ", sunrise"
 	transitTitle := location.Name + ", transit"
 	sunsetTitle := location.Name + ", sunset"
-	duskTitle := location.Name + ", dusk"
+	dusk6Title := location.Name + ", dusk6"
+	dusk12Title := location.Name + ", dusk12"
+	dusk18Title := location.Name + ", dusk18"
 
 	for i, exp := range expectedSchedules {
 		res := calculatedSchedules[i]
-		dawn18Diff := compareTime(dawnTitle, res.Date, exp.Dawn18, res.Dawn18)
-		dawn12Diff := compareTime(dawnTitle, res.Date, exp.Dawn12, res.Dawn12)
-		dawn6Diff := compareTime(dawnTitle, res.Date, exp.Dawn6, res.Dawn6)
+		dawn18Diff := compareTime(dawn18Title, res.Date, exp.Dawn18, res.Dawn18)
+		dawn12Diff := compareTime(dawn12Title, res.Date, exp.Dawn12, res.Dawn12)
+		dawn6Diff := compareTime(dawn6Title, res.Date, exp.Dawn6, res.Dawn6)
 		sunriseDiff := compareTime(sunriseTitle, res.Date, exp.Sunrise, res.Sunrise)
 		transitDiff := compareTime(transitTitle, res.Date, exp.Transit, res.Transit)
 		sunsetDiff := compareTime(sunsetTitle, res.Date, exp.Sunset, res.Sunset)
-		dusk6Diff := compareTime(duskTitle, res.Date, exp.Dusk6, res.Dusk6)
-		dusk12Diff := compareTime(duskTitle, res.Date, exp.Dusk12, res.Dusk12)
-		dusk18Diff := compareTime(duskTitle, res.Date, exp.Dusk18, res.Dusk18)
+		dusk6Diff := compareTime(dusk6Title, res.Date, exp.Dusk6, res.Dusk6)
+		dusk12Diff := compareTime(dusk12Title, res.Date, exp.Dusk12, res.Dusk12)
+		dusk18Diff := compareTime(dusk18Title, res.Date, exp.Dusk18, res.Dusk18)
 		sunriseAzimuthDiff := math.Abs(res.SunriseAzimuth - exp.SunriseAzimuth)
 		sunsetAzimuthDiff := math.Abs(res.SunsetAzimuth - exp.SunsetAzimuth)
 		transitAltitudeDiff := math.Abs(res.TransitAltitude - exp.TransitAltitude)
