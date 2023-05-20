@@ -78,20 +78,24 @@ func compareSunSchedules(location Location) error {
 		transitAltitudeDiffs = append(transitAltitudeDiffs, transitAltitudeDiff)
 	}
 
-	// Print diff stat
-	fmt.Printf("Sun event in **%s**\n\n", location.Name)
-	printTimeDiff("- Dawn 18", dawn18Diffs)
-	printTimeDiff("- Dawn 12", dawn12Diffs)
-	printTimeDiff("- Dawn 6 ", dawn6Diffs)
-	printTimeDiff("- Sunrise", sunriseDiffs)
-	printTimeDiff("- Transit", transitDiffs)
-	printTimeDiff("- Sunset ", sunsetDiffs)
-	printTimeDiff("- Dusk 6 ", dusk6Diffs)
-	printTimeDiff("- Dusk 12", dusk12Diffs)
-	printTimeDiff("- Dusk 18", dusk18Diffs)
-	printFloatDiff("- Sunrise azimuth ", sunriseAzimuthDiffs)
-	printFloatDiff("- Sunset azimuth  ", sunsetAzimuthDiffs)
-	printFloatDiff("- Transit altitude", transitAltitudeDiffs)
+	// Print diff table
+	var t Table
+	t.AddRow("Name", "Max", "Mode", "Avg")
+	t.AddRow(timeDiffRow("Dawn 18", dawn18Diffs)...)
+	t.AddRow(timeDiffRow("Dawn 12", dawn12Diffs)...)
+	t.AddRow(timeDiffRow("Dawn 6", dawn6Diffs)...)
+	t.AddRow(timeDiffRow("Sunrise", sunriseDiffs)...)
+	t.AddRow(timeDiffRow("Transit", transitDiffs)...)
+	t.AddRow(timeDiffRow("Sunset", sunsetDiffs)...)
+	t.AddRow(timeDiffRow("Dusk 6", dusk6Diffs)...)
+	t.AddRow(timeDiffRow("Dusk 12", dusk12Diffs)...)
+	t.AddRow(timeDiffRow("Dusk 18", dusk18Diffs)...)
+	t.AddRow(floatDiffRow("Sunrise azimuth", sunriseAzimuthDiffs)...)
+	t.AddRow(floatDiffRow("Sunset azimuth", sunsetAzimuthDiffs)...)
+	t.AddRow(floatDiffRow("Transit altitude", transitAltitudeDiffs)...)
+
+	fmt.Printf("### Sun in %s\n\n", location.Name)
+	fmt.Println(t.String())
 	fmt.Println()
 	return nil
 }
@@ -144,15 +148,20 @@ func compareMoonSchedules(location Location) error {
 		illuminationDiffs = append(illuminationDiffs, illuminationDiff)
 	}
 
+	// Print diff table
+	var t Table
+	t.AddRow("Name", "Max", "Mode", "Avg")
+	t.AddRow(timeDiffRow("Moonrise", moonriseDiffs)...)
+	t.AddRow(timeDiffRow("Transit", transitDiffs)...)
+	t.AddRow(timeDiffRow("Moonset", moonsetDiffs)...)
+	t.AddRow(floatDiffRow("Moonrise azimuth", moonriseAzimuthDiffs)...)
+	t.AddRow(floatDiffRow("Moonset azimuth", moonsetAzimuthDiffs)...)
+	t.AddRow(floatDiffRow("Transit altitude", transitAltitudeDiffs)...)
+	t.AddRow(floatDiffRow("Illumination", illuminationDiffs)...)
+
 	// Print diff stat
-	fmt.Printf("Moon event in **%s**\n\n", location.Name)
-	printTimeDiff("- Moonrise", moonriseDiffs)
-	printTimeDiff("- Transit ", transitDiffs)
-	printTimeDiff("- Moonset ", moonsetDiffs)
-	printFloatDiff("- Moonrise azimuth", moonriseAzimuthDiffs)
-	printFloatDiff("- Moonset azimuth ", moonsetAzimuthDiffs)
-	printFloatDiff("- Transit altitude", transitAltitudeDiffs)
-	printFloatDiff("- Illumination    ", illuminationDiffs)
+	fmt.Printf("### Moon in %s\n\n", location.Name)
+	fmt.Println(t.String())
 	fmt.Println()
 	return nil
 }
@@ -228,12 +237,22 @@ func diffStat[T int | float64](diffs []T) (max T, mode T, avg float64) {
 	return
 }
 
-func printTimeDiff(title string, diffs []int) {
+func timeDiffRow(title string, diffs []int) []string {
 	max, mode, avg := diffStat(diffs)
-	fmt.Printf("%s: diff max = %2ds, mode = %ds, avg = %.2fs\n", title, max, mode, avg)
+	return []string{
+		title,
+		fmt.Sprintf("%ds", max),
+		fmt.Sprintf("%ds", mode),
+		fmt.Sprintf("%.2fs", avg),
+	}
 }
 
-func printFloatDiff(title string, diffs []float64) {
+func floatDiffRow(title string, diffs []float64) []string {
 	max, mode, avg := diffStat(diffs)
-	fmt.Printf("%s: diff max = %2.2f, mode = %.2f, avg = %.2f\n", title, max, mode, avg)
+	return []string{
+		title,
+		fmt.Sprintf("%.2f", max),
+		fmt.Sprintf("%.2f", mode),
+		fmt.Sprintf("%.2f", avg),
+	}
 }

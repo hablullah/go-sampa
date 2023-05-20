@@ -1,6 +1,9 @@
 package main
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 const (
 	year      = 2023
@@ -12,6 +15,9 @@ const (
 func main() {
 	log.SetFlags(0)
 
+	fmt.Printf("# Comparison Results\n\n")
+
+	fmt.Printf("## Sun Events\n\n")
 	compareSunSchedules(LordHoweIsland)
 	compareSunSchedules(Maputo)
 	compareSunSchedules(Amsterdam)
@@ -19,6 +25,7 @@ func main() {
 	compareSunSchedules(Philipsburg)
 	compareSunSchedules(NewYork)
 
+	fmt.Printf("## Moon Events\n\n")
 	compareMoonSchedules(LordHoweIsland)
 	compareMoonSchedules(Maputo)
 	compareMoonSchedules(Amsterdam)
