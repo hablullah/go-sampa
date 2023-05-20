@@ -8,7 +8,6 @@ import (
 
 	"github.com/hablullah/go-sampa"
 	"github.com/hablullah/go-sampa/internal/testdata"
-	"github.com/stretchr/testify/assert"
 )
 
 var timeFormat = "2006-01-02 15:04:05 -0700"
@@ -29,19 +28,19 @@ func assertSunEvents(t *testing.T, name string, dt time.Time, expected testdata.
 	strSunset := got.Sunset.DateTime.Format(timeFormat)
 	strDusk := got.Others["Dusk"].DateTime.Format(timeFormat)
 
-	msgFormat := "%s, %s => want %s got %s"
-	dawnMsg := fmt.Sprintf("Dawn, "+msgFormat, name, strDate, expected.Dawn, strDawn)
+	msgFormat := "%s, %s => want %q got %q"
+	dawnMsg := fmt.Sprintf("Sun dawn, "+msgFormat, name, strDate, expected.Dawn, strDawn)
 	sunriseMsg := fmt.Sprintf("Sunrise, "+msgFormat, name, strDate, expected.Rise, strSunrise)
-	transitMsg := fmt.Sprintf("Transit, "+msgFormat, name, strDate, expected.Transit, strTransit)
+	transitMsg := fmt.Sprintf("Sun transit, "+msgFormat, name, strDate, expected.Transit, strTransit)
 	sunsetMsg := fmt.Sprintf("Sunset, "+msgFormat, name, strDate, expected.Set, strSunset)
-	duskMsg := fmt.Sprintf("Dusk, "+msgFormat, name, strDate, expected.Dusk, strDusk)
+	duskMsg := fmt.Sprintf("Sun dusk, "+msgFormat, name, strDate, expected.Dusk, strDusk)
 
 	// Diff only allowed up to 10 seconds
-	assert.LessOrEqual(t, diffDawn, 10, dawnMsg)
-	assert.LessOrEqual(t, diffSunrise, 10, sunriseMsg)
-	assert.LessOrEqual(t, diffTransit, 10, transitMsg)
-	assert.LessOrEqual(t, diffSunset, 10, sunsetMsg)
-	assert.LessOrEqual(t, diffDusk, 10, duskMsg)
+	assertLTE(t, diffDawn, 10, dawnMsg)
+	assertLTE(t, diffSunrise, 10, sunriseMsg)
+	assertLTE(t, diffTransit, 10, transitMsg)
+	assertLTE(t, diffSunset, 10, sunsetMsg)
+	assertLTE(t, diffDusk, 10, duskMsg)
 }
 
 func assertMoonEvents(t *testing.T, name string, dt time.Time, expected testdata.CelestialEvent, got sampa.MoonEvents) {
@@ -60,19 +59,19 @@ func assertMoonEvents(t *testing.T, name string, dt time.Time, expected testdata
 	strMoonset := got.Moonset.DateTime.Format("15:04:05")
 	strDusk := got.Others["Dusk"].DateTime.Format(timeFormat)
 
-	msgFormat := "%s, %s => want %s got %s"
-	dawnMsg := fmt.Sprintf("Dawn, "+msgFormat, name, strDate, expected.Dawn, strDawn)
+	msgFormat := "%s, %s => want %q got %q"
+	dawnMsg := fmt.Sprintf("Moon dawn, "+msgFormat, name, strDate, expected.Dawn, strDawn)
 	moonriseMsg := fmt.Sprintf("Moonrise, "+msgFormat, name, strDate, expected.Rise, strMoonrise)
-	transitMsg := fmt.Sprintf("Transit, "+msgFormat, name, strDate, expected.Transit, strTransit)
+	transitMsg := fmt.Sprintf("Moon transit, "+msgFormat, name, strDate, expected.Transit, strTransit)
 	moonsetMsg := fmt.Sprintf("Moonset, "+msgFormat, name, strDate, expected.Set, strMoonset)
-	duskMsg := fmt.Sprintf("Dusk, "+msgFormat, name, strDate, expected.Dusk, strDusk)
+	duskMsg := fmt.Sprintf("Moon dusk, "+msgFormat, name, strDate, expected.Dusk, strDusk)
 
 	// Diff only allowed up to 10 seconds
-	assert.LessOrEqual(t, diffDawn, 10, dawnMsg)
-	assert.LessOrEqual(t, diffTransit, 10, transitMsg)
-	assert.LessOrEqual(t, diffMoonrise, 10, moonriseMsg)
-	assert.LessOrEqual(t, diffMoonset, 10, moonsetMsg)
-	assert.LessOrEqual(t, diffDusk, 10, duskMsg)
+	assertLTE(t, diffDawn, 10, dawnMsg)
+	assertLTE(t, diffTransit, 10, transitMsg)
+	assertLTE(t, diffMoonrise, 10, moonriseMsg)
+	assertLTE(t, diffMoonset, 10, moonsetMsg)
+	assertLTE(t, diffDusk, 10, duskMsg)
 }
 
 func diffTestTime(dt time.Time, expected string, got time.Time) int {
@@ -84,4 +83,16 @@ func diffTestTime(dt time.Time, expected string, got time.Time) int {
 
 	diff := math.Round(math.Abs(expectedTime.Sub(got).Seconds()))
 	return int(diff)
+}
+
+func assertLTE[T int | float64](t *testing.T, a T, b T, msg string) {
+	if a > b {
+		t.Error(msg)
+	}
+}
+
+func assertNil(t *testing.T, v any, msg string) {
+	if v != nil {
+		t.Error(msg)
+	}
 }
