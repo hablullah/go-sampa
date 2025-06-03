@@ -18,7 +18,7 @@ const (
 	WaningGibbous
 	LastQuarter
 	WaningCrescent
-	nextNewMoon
+	_nextNewMoon
 )
 
 func (mp MoonPhase) String() string {
@@ -69,13 +69,32 @@ func GetMoonPhases(dt time.Time, opts *Options) MoonPhases {
 	// Calculate base k value
 	baseK := math.Floor((yearFraction - 2000) * 12.3685)
 
-	// Calculate time for each phases
+	// Calculate time for last and next new moon
 	tz := dt.Location()
 	newMoon := getMoonPhaseTime(NewMoon, baseK, tz, opts)
+	nextNewMoon := getMoonPhaseTime(_nextNewMoon, baseK, tz, opts)
+
+	// Make sure dt is between the last and the next new moon.
+	// If not, we might have missed a lunar cycle, so adjust the base K value.
+	var recalculate bool
+	if dt.Before(newMoon) {
+		baseK -= 1
+		recalculate = true
+	} else if dt.After(nextNewMoon) {
+		baseK += 1
+		recalculate = true
+	}
+
+	// If needed, recalculate the new moon time
+	if recalculate {
+		newMoon = getMoonPhaseTime(NewMoon, baseK, tz, opts)
+		nextNewMoon = getMoonPhaseTime(_nextNewMoon, baseK, tz, opts)
+	}
+
+	// Calculate the rest
 	firstQuarter := getMoonPhaseTime(FirstQuarter, baseK, tz, opts)
 	fullMoon := getMoonPhaseTime(FullMoon, baseK, tz, opts)
 	lastQuarter := getMoonPhaseTime(LastQuarter, baseK, tz, opts)
-	nextNewMoon := getMoonPhaseTime(nextNewMoon, baseK, tz, opts)
 
 	// Calculate month's length
 	monthLength := nextNewMoon.Sub(newMoon).Hours() / 24
@@ -100,7 +119,7 @@ func getMoonPhaseTime(phase MoonPhase, baseK float64, tz *time.Location, opts *O
 		k += 0.5
 	case LastQuarter:
 		k += 0.75
-	case nextNewMoon:
+	case _nextNewMoon:
 		k += 1
 	}
 
@@ -181,7 +200,7 @@ func getMoonPhaseTime(phase MoonPhase, baseK float64, tz *time.Location, opts *O
 
 func getPhaseCorrection(phase MoonPhase, E, M, MPrime, F, omega float64) float64 {
 	switch phase {
-	case NewMoon, nextNewMoon:
+	case NewMoon, _nextNewMoon:
 		return (-40720*math.Sin(MPrime) +
 			17241*E*math.Sin(M) +
 			1608*math.Sin(2*MPrime) +
